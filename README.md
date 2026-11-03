@@ -32,6 +32,7 @@ bash scripts/apply_migrations.sh
 ## ドキュメント
 
 - [アーキテクチャ](docs/architecture.md)
+- [MCP ツール一覧](docs/mcp-tools.md)
 - [ガバナンス（役割・権限・データの境界）](docs/governance.md)
 - [ブランチ運用ルール](docs/branch-rules.md)
 - [デプロイ手順](docs/deploy.md)
