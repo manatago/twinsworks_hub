@@ -1,0 +1,275 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="960" viewBox="0 0 1440 960">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4f8fc"/><stop offset="1" stop-color="#ffffff"/>
+    </linearGradient>
+    <linearGradient id="vpshead" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#33475e"/><stop offset="1" stop-color="#496a8a"/>
+    </linearGradient>
+    <linearGradient id="svc" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2f6fb2"/><stop offset="1" stop-color="#3f8fcf"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1f2a37" flood-opacity="0.13"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#44546a"/>
+    </marker>
+    <marker id="arrowDash" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8a6d1f"/>
+    </marker>
+
+    <!-- Service icons (simplified brand marks, drawn inline) -->
+    <g id="i-slack">
+      <rect x="5" y="5" width="17" height="17" rx="5" fill="#36C5F0"/>
+      <rect x="26" y="5" width="17" height="17" rx="5" fill="#2EB67D"/>
+      <rect x="5" y="26" width="17" height="17" rx="5" fill="#E01E5A"/>
+      <rect x="26" y="26" width="17" height="17" rx="5" fill="#ECB22E"/>
+    </g>
+    <g id="i-gmail">
+      <rect x="5" y="11" width="38" height="27" rx="4" fill="#ffffff" stroke="#dadce0" stroke-width="1.6"/>
+      <path d="M10 16 L24 27 L38 16" fill="none" stroke="#EA4335" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M10 16 V35" stroke="#4285F4" stroke-width="4" stroke-linecap="round"/>
+      <path d="M38 16 V35" stroke="#34A853" stroke-width="4" stroke-linecap="round"/>
+      <path d="M10 35 L20 27" stroke="#FBBC04" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <g id="i-drive">
+      <path d="M24 7 L11 38" stroke="#0F9D58" stroke-width="6.5" stroke-linecap="round"/>
+      <path d="M24 7 L37 38" stroke="#F4B400" stroke-width="6.5" stroke-linecap="round"/>
+      <path d="M13 34 L35 34" stroke="#4285F4" stroke-width="6.5" stroke-linecap="round"/>
+    </g>
+    <g id="i-meet">
+      <rect x="6" y="15" width="24" height="19" rx="5" fill="#00832D"/>
+      <path d="M30 22 L42 15 V34 L30 29 Z" fill="#00832D"/>
+      <circle cx="15" cy="24.5" r="3" fill="#ffffff" opacity="0.9"/>
+    </g>
+    <g id="i-zoom">
+      <rect x="4" y="6" width="40" height="36" rx="9" fill="#2D8CFF"/>
+      <rect x="12" y="18" width="16" height="13" rx="3" fill="#ffffff"/>
+      <path d="M28 22 L37 17 V32 L28 28 Z" fill="#ffffff"/>
+    </g>
+    <g id="i-github">
+      <circle cx="24" cy="24" r="20" fill="#24292F"/>
+      <path d="M24 10c-7.7 0-14 6.3-14 14 0 6.2 4 11.4 9.6 13.3.7.1 1-.4 1-1v-2.6c-3.9.9-4.7-1.9-4.7-1.9-.7-1.6-1.6-2-1.6-2-1.3-.9.1-.9.1-.9 1.4.1 2.2 1.5 2.2 1.5 1.3 2.2 3.4 1.6 4.2 1.2.1-1 .5-1.6.9-2-3.1-.4-6.4-1.6-6.4-7 0-1.6.6-2.8 1.5-3.8-.2-.4-.7-1.9.1-4 0 0 1.2-.4 4 1.5a13.6 13.6 0 0 1 7.4 0c2.8-1.9 4-1.5 4-1.5.8 2.1.3 3.6.1 4 .9 1 1.5 2.2 1.5 3.8 0 5.4-3.3 6.6-6.5 7 .5.5 1 1.4 1 2.9v4.1c0 .6.3 1.1 1 1A14 14 0 0 0 38 24c0-7.7-6.3-14-14-14z" fill="#ffffff"/>
+    </g>
+    <g id="i-tailscale">
+      <circle cx="14" cy="14" r="3.4" fill="#20242a"/><circle cx="24" cy="14" r="3.4" fill="#20242a"/><circle cx="34" cy="14" r="3.4" fill="#20242a"/>
+      <circle cx="14" cy="24" r="3.4" fill="#aeb8c0"/><circle cx="24" cy="24" r="3.4" fill="#20242a"/><circle cx="34" cy="24" r="3.4" fill="#aeb8c0"/>
+      <circle cx="14" cy="34" r="3.4" fill="#aeb8c0"/><circle cx="24" cy="34" r="3.4" fill="#20242a"/><circle cx="34" cy="34" r="3.4" fill="#aeb8c0"/>
+    </g>
+    <g id="i-person">
+      <circle cx="24" cy="16" r="8" fill="#5b7ea6"/>
+      <path d="M8 40c2-9 8-13 16-13s14 4 16 13z" fill="#5b7ea6"/>
+    </g>
+    <g id="i-bot">
+      <rect x="9" y="15" width="30" height="24" rx="7" fill="#7a6fd0"/>
+      <path d="M24 15 V8" stroke="#7a6fd0" stroke-width="3.4" stroke-linecap="round"/>
+      <circle cx="24" cy="6.5" r="3" fill="#7a6fd0"/>
+      <circle cx="18" cy="27" r="3" fill="#ffffff"/><circle cx="30" cy="27" r="3" fill="#ffffff"/>
+    </g>
+    <g id="i-db">
+      <ellipse cx="24" cy="11" rx="15" ry="6" fill="#c65b5b"/>
+      <path d="M9 11 v22 c0 3.3 6.7 6 15 6 s15-2.7 15-6 V11" fill="#d97b7b"/>
+      <path d="M9 22 c0 3.3 6.7 6 15 6 s15-2.7 15-6" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.65"/>
+    </g>
+    <g id="i-shield">
+      <path d="M24 5 L40 11 V24 c0 10-6.8 16.4-16 19 C14.8 40.4 8 34 8 24 V11 Z" fill="#4c7a4c"/>
+      <path d="M17 24 l5 5 l10-11" fill="none" stroke="#ffffff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <g id="i-key">
+      <circle cx="17" cy="28" r="9" fill="none" stroke="#8a6d1f" stroke-width="4"/>
+      <path d="M24 21 L39 7 M33 13 l6 6 M28 18 l5 5" stroke="#8a6d1f" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <style>
+      .title { font: 700 30px sans-serif; fill: #1d2a38; }
+      .sub { font: 14.5px sans-serif; fill: #5a6a79; }
+      .sec { font: 700 12.5px sans-serif; fill: #8496a6; letter-spacing: 1.5px; }
+      .h { font: 700 18px sans-serif; fill: #1f2a37; }
+      .h2 { font: 700 16px sans-serif; fill: #1f2a37; }
+      .t { font: 14px sans-serif; fill: #3c4c5c; }
+      .s { font: 12.5px sans-serif; fill: #637585; }
+      .mono { font: 13.5px ui-monospace, Menlo, monospace; fill: #33404f; }
+      .card { fill: #ffffff; stroke: #d5dee7; stroke-width: 1.2; }
+      .pill { fill: #eaf1f8; stroke: #c9d8e8; }
+      .pillt { font: 600 13px sans-serif; fill: #33506e; }
+      .svclab { font: 700 14.5px sans-serif; fill: #24313f; }
+      .svcsub { font: 11.5px sans-serif; fill: #71808f; }
+      .line { stroke: #44546a; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .dash { stroke: #8a6d1f; stroke-width: 2; fill: none; stroke-dasharray: 7 5; marker-end: url(#arrowDash); }
+      .chip { fill: #f6e8e8; stroke: #dfb3b3; }
+      .chipt { font: 600 12.5px sans-serif; fill: #7c3f3f; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1440" height="960" fill="url(#bg)"/>
+
+  <!-- Header -->
+  <text x="56" y="64" class="title">共有基盤アーキテクチャ</text>
+  <text x="56" y="94" class="sub">twinsworks_hub ― manatago × 新谷の共有基盤。定義・実装は Git、状態・実データは DB、公開はテールネット内のみ。</text>
+  <g>
+    <rect x="906" y="40" width="150" height="34" rx="17" class="pill"/><text x="981" y="62" text-anchor="middle" class="pillt">Git = 定義・実装</text>
+    <rect x="1068" y="40" width="164" height="34" rx="17" class="pill"/><text x="1150" y="62" text-anchor="middle" class="pillt">DB = 状態・実データ</text>
+    <rect x="1244" y="40" width="150" height="34" rx="17" class="pill"/><text x="1319" y="62" text-anchor="middle" class="pillt">公開 = テールネット内</text>
+  </g>
+
+  <!-- Left: actors -->
+  <text x="56" y="140" class="sec">利用者</text>
+  <g filter="url(#shadow)">
+    <rect x="56" y="152" width="264" height="126" rx="14" class="card"/>
+    <use href="#i-person" x="76" y="172" width="44" height="44"/>
+    <text x="132" y="196" class="h">人間</text>
+    <text x="76" y="240" class="t">manatago / 新谷</text>
+    <text x="76" y="262" class="t">会議・進捗確認・判断</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="56" y="302" width="264" height="148" rx="14" class="card"/>
+    <use href="#i-bot" x="76" y="322" width="44" height="44"/>
+    <text x="132" y="346" class="h">AIエージェント</text>
+    <text x="76" y="390" class="t">Muse / Dots / manatago側</text>
+    <text x="76" y="412" class="t">取り込み・整理・タスク化</text>
+    <text x="76" y="434" class="s">エージェント別に範囲を絞ったキーで接続</text>
+  </g>
+
+  <!-- Sources -->
+  <text x="356" y="140" class="sec">外部サービス（入口としてのみ使う）</text>
+  <g filter="url(#shadow)">
+    <rect x="356" y="152" width="124" height="104" rx="14" class="card"/>
+    <use href="#i-slack" x="396" y="164" width="44" height="44"/>
+    <text x="418" y="230" text-anchor="middle" class="svclab">Slack</text>
+    <text x="418" y="248" text-anchor="middle" class="svcsub">連絡・相談</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="492" y="152" width="124" height="104" rx="14" class="card"/>
+    <use href="#i-gmail" x="532" y="164" width="44" height="44"/>
+    <text x="554" y="230" text-anchor="middle" class="svclab">Gmail</text>
+    <text x="554" y="248" text-anchor="middle" class="svcsub">メール</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="628" y="152" width="124" height="104" rx="14" class="card"/>
+    <use href="#i-drive" x="668" y="164" width="44" height="44"/>
+    <text x="690" y="230" text-anchor="middle" class="svclab">Google Drive</text>
+    <text x="690" y="248" text-anchor="middle" class="svcsub">議事録・文書</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="764" y="152" width="124" height="104" rx="14" class="card"/>
+    <use href="#i-meet" x="804" y="164" width="44" height="44"/>
+    <text x="826" y="230" text-anchor="middle" class="svclab">Google Meet</text>
+    <text x="826" y="248" text-anchor="middle" class="svcsub">会議</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="900" y="152" width="124" height="104" rx="14" class="card"/>
+    <use href="#i-zoom" x="940" y="164" width="44" height="44"/>
+    <text x="962" y="230" text-anchor="middle" class="svclab">Zoom</text>
+    <text x="962" y="248" text-anchor="middle" class="svcsub">会議</text>
+  </g>
+  <text x="356" y="282" class="s">Webhook は「呼び鈴」。正本の内容は、エージェントが自らの接続で各サービスから取得する。</text>
+
+  <!-- VPS -->
+  <rect x="356" y="306" width="700" height="512" rx="20" fill="#ffffff" stroke="#44546a" stroke-width="1.6" stroke-dasharray="8 6"/>
+  <path d="M356 326 a20 20 0 0 1 20-20 h660 a20 20 0 0 1 20 20 v34 H356 Z" fill="url(#vpshead)"/>
+  <text x="384" y="342" font-family="sans-serif" font-weight="700" font-size="18px" fill="#ffffff">manatago VPS（さくらインターネット）</text>
+  <text x="1028" y="342" text-anchor="end" font-family="sans-serif" font-size="13px" fill="#d7e3ef">Docker Compose</text>
+  <text x="384" y="386" class="s">manatago のテールネット所属。新谷側へはデバイス共有でのみ見せる。アプリはこの中で動く。</text>
+
+  <g filter="url(#shadow)">
+    <rect x="384" y="402" width="644" height="54" rx="12" fill="#eef6ee" stroke="#bcd6bc"/>
+    <use href="#i-tailscale" x="402" y="408" width="42" height="42"/>
+    <text x="458" y="428" class="h2">Tailscale Serve（*.ts.net HTTPS）</text>
+    <text x="458" y="448" class="s">テールネット内のみ公開 ／ Postgres のポートは公開しない</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="384" y="478" width="200" height="128" rx="14" class="card"/>
+    <text x="404" y="512" class="h2">MCPサーバー</text>
+    <text x="404" y="540" class="t">エージェント向け主窓口</text>
+    <text x="404" y="562" class="t">サービス層のファサード</text>
+    <text x="404" y="588" class="s">公開REST APIは作らない</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="606" y="478" width="200" height="128" rx="14" class="card"/>
+    <text x="626" y="512" class="h2">Webダッシュボード</text>
+    <text x="626" y="540" class="t">人間向けの共用管理画面</text>
+    <text x="626" y="562" class="t">会議で進捗を見る</text>
+    <text x="626" y="588" class="s">共有タスクのみ表示</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="828" y="478" width="200" height="128" rx="14" class="card"/>
+    <text x="848" y="512" class="h2">取り込み処理</text>
+    <text x="848" y="540" class="t">Webhook を主とする</text>
+    <text x="848" y="562" class="t">定期取得は安全網</text>
+    <text x="848" y="588" class="s">内容はデータとして処理</text>
+  </g>
+  <text x="384" y="470" class="s">アプリ（MCP と Web は同一アプリの別フェースでよい）</text>
+
+  <rect x="384" y="630" width="644" height="56" rx="12" fill="url(#svc)"/>
+  <text x="706" y="656" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="17px" fill="#ffffff">サービス層</text>
+  <text x="706" y="676" text-anchor="middle" font-family="sans-serif" font-size="12.5px" fill="#dcecf9">業務ロジック ／ 権限チェック ／ APIキー検証 ― すべての読み書きはここを通す</text>
+
+  <g filter="url(#shadow)">
+    <rect x="384" y="710" width="644" height="82" rx="14" fill="#fdf3f3" stroke="#dfb3b3"/>
+    <use href="#i-db" x="404" y="726" width="46" height="46"/>
+    <text x="466" y="742" class="h2">Postgres（Dockerボリューム）</text>
+    <text x="466" y="764" class="t">状態・実データの置き場</text>
+    <g>
+      <rect x="700" y="726" width="92" height="24" rx="12" class="chip"/><text x="746" y="742" text-anchor="middle" class="chipt">identities</text>
+      <rect x="800" y="726" width="62" height="24" rx="12" class="chip"/><text x="831" y="742" text-anchor="middle" class="chipt">tasks</text>
+      <rect x="870" y="726" width="96" height="24" rx="12" class="chip"/><text x="918" y="742" text-anchor="middle" class="chipt">documents</text>
+      <rect x="700" y="756" width="150" height="24" rx="12" class="chip"/><text x="775" y="772" text-anchor="middle" class="chipt">取り込みデータ・キュー</text>
+    </g>
+  </g>
+
+  <!-- Right rail -->
+  <g filter="url(#shadow)">
+    <rect x="1088" y="306" width="296" height="150" rx="14" class="card"/>
+    <use href="#i-github" x="1108" y="326" width="46" height="46"/>
+    <text x="1166" y="346" class="h">GitHub</text>
+    <text x="1166" y="368" class="s">定義・仕様・実装の正本</text>
+    <text x="1108" y="404" class="mono">manatago/twinsworks_hub</text>
+    <text x="1108" y="428" class="t">ルール文書 ／ スキーマ ／ コード</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="1088" y="480" width="296" height="130" rx="14" class="card"/>
+    <use href="#i-key" x="1108" y="500" width="42" height="42"/>
+    <text x="1162" y="520" class="h">VPS側に置くもの</text>
+    <text x="1162" y="542" class="s">リポジトリには入れない</text>
+    <text x="1108" y="574" class="t">.env と秘密情報</text>
+    <text x="1108" y="596" class="t">DBバックアップ</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="1088" y="634" width="296" height="184" rx="14" class="card"/>
+    <use href="#i-shield" x="1108" y="654" width="42" height="42"/>
+    <text x="1162" y="674" class="h">セキュリティ原則</text>
+    <text x="1108" y="716" class="t">・取り込んだ内容は「データ」</text>
+    <text x="1122" y="738" class="t">として扱い、指示にしない</text>
+    <text x="1108" y="764" class="t">・管理ログインはパスキー基本</text>
+    <text x="1108" y="790" class="t">・公開HTTPSは Webhook 受け口</text>
+    <text x="1122" y="812" class="t">が必要な場合のみ</text>
+  </g>
+
+  <!-- Personal side -->
+  <text x="56" y="712" class="sec">境界</text>
+  <g filter="url(#shadow)">
+    <rect x="56" y="724" width="264" height="150" rx="14" fill="#f7f4fc" stroke="#c4b6e4"/>
+    <text x="76" y="756" class="h">個人側（対象外）</text>
+    <text x="76" y="784" class="t">ProjectTitan / 個人コア</text>
+    <text x="76" y="806" class="t">Mac mini（M2）</text>
+    <text x="76" y="834" class="s">個人データは共有DBに入れない</text>
+    <text x="76" y="856" class="s">参加型の仕事は先方基盤が正本</text>
+  </g>
+
+  <!-- Arrows -->
+  <path d="M 320 216 C 352 216, 352 424, 378 428" class="line"/>
+  <path d="M 320 376 C 356 376, 356 540, 378 542" class="line"/>
+  <path d="M 928 262 C 928 340, 928 400, 928 470" class="line"/>
+  <text x="940" y="330" class="s">Webhook / 定期取得</text>
+  <path d="M 1088 372 L 1064 372" class="line"/>
+  <text x="1072" y="292" text-anchor="middle" class="s">clone / デプロイ</text>
+  <path d="M 484 606 L 484 624" class="line"/>
+  <path d="M 706 606 L 706 624" class="line"/>
+  <path d="M 928 606 L 928 624" class="line"/>
+  <path d="M 706 686 L 706 704" class="line"/>
+  <path d="M 320 770 C 344 770, 352 752, 378 750" class="dash"/>
+  <text x="60" y="906" class="s">破線 = 共有化は「昇格」: 個人タスクが共有になったら、正本を共有DBへ移し、個人側にはリンクだけ残す。</text>
+  <text x="60" y="930" class="s">ビルドはデプロイ先で行う（Mac の ARM と VPS の x86 でアーキテクチャが異なるため）。</text>
+</svg>
