@@ -33,6 +33,7 @@ bash scripts/apply_migrations.sh
 
 - [アーキテクチャ](docs/architecture.md)
 - [MCP ツール一覧](docs/mcp-tools.md)
+- [AI・セキュリティ情報収集（朝の速報）](docs/morning-digest.md)
 - [ガバナンス（役割・権限・データの境界）](docs/governance.md)
 - [ブランチ運用ルール](docs/branch-rules.md)
 - [デプロイ手順](docs/deploy.md)
