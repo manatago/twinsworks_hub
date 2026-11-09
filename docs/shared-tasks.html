@@ -112,9 +112,9 @@ const SEED = [
   { id:'seed-7', title:'xvps 構築：Docker → clone → compose → マイグレーション → /health → Tailscale Serve', desc:'会議後に Muse が xvps 上で進める。Docker の有無は未確認。', status:'open', owner:'Muse', due:'', priority:'normal', source:'会議', project:'twins works' },
   { id:'seed-8', title:'構成図を XServer 前提に更新', desc:'docs/architecture-diagram.svg は今もさくら VPS 前提のまま。', status:'open', owner:'Muse', due:'', priority:'low', source:'その他', project:'twins works' },
 ];
-function load(){ try { const raw = localStorage.getItem(KEY); if (raw) return JSON.parse(raw); } catch(e){} localStorage.setItem(KEY, JSON.stringify(SEED)); return SEED.slice(); }
+function load(){ try { const raw = localStorage.getItem(KEY); if (raw) return JSON.parse(raw); } catch(e){} try { localStorage.setItem(KEY, JSON.stringify(SEED)); } catch(e){} return SEED.slice(); }
 let tasks = load();
-const save = () => localStorage.setItem(KEY, JSON.stringify(tasks));
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(tasks)); } catch(e){} };
 const $ = id => document.getElementById(id);
 function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function dueLabel(t){
