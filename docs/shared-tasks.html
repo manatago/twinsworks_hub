@@ -109,7 +109,7 @@ const SEED = [
   { id:'seed-3', title:'パスワードログインの無効化（11/10 会議で決定・実施）', desc:'前提の3経路（Mac・DefineR5・Muse）の鍵ログインは 2026-11-09 に確認済み。会議で合意すればその場で実施。', status:'open', owner:'新谷', due:'2026-11-10', priority:'high', source:'会議', project:'twins works' },
   { id:'seed-4', title:'カーネル更新 CVE-2026-98432 の確認', desc:'xvps のカーネルは 7.0.0-14 で修正版より前。修正版が通常チャネルに出ていれば更新＋再起動、出ていなければ nftables 緩和策を判断。11/10 会議の議題。', status:'open', owner:'新谷', due:'2026-11-10', priority:'normal', source:'会議', project:'twins works' },
   { id:'seed-5', title:'sakura-vps1 を閉じる日と LFS 移行完了の前後関係を確認', desc:'日程は manatago 担当。vps1 閉鎖前に LFS の移行と向き先切替・動作確認を終わらせる順序が前提。', status:'open', owner:'manatago（田子森）', due:'2026-11-10', priority:'high', source:'会議', project:'twins works' },
-  { id:'seed-6', title:'manatago側の MCP 利用確認', desc:'11/10 会議の宿題。', status:'open', owner:'manatago（田子森）', due:'2026-11-10', priority:'normal', source:'会議', project:'twins works' },
+  { id:'seed-6', title:'manatago側の MCP 利用確認', desc:'共通基盤はエージェントが MCP 経由でタスク等を読み書きする設計で、詳細設計で12個の MCP ツールを定義済み（docs/mcp-tools.md）。manatago 側のエージェント環境から基盤の MCP サーバーへ接続し、ツールが実際に使えるかを確認する。接続方式と、エージェントごとの API キーの受け渡し方も含む。基盤構築（#7）の前提として、2026-11-10 の twins works 会議で確認する。', status:'open', owner:'manatago（田子森）', due:'2026-11-10', priority:'normal', source:'会議', project:'twins works' },
   { id:'seed-7', title:'xvps 構築：Docker → clone → compose → マイグレーション → /health → Tailscale Serve', desc:'会議後に Muse が xvps 上で進める。Docker の有無は未確認。', status:'open', owner:'Muse', due:'', priority:'normal', source:'会議', project:'twins works' },
   { id:'seed-8', title:'構成図を XServer 前提に更新', desc:'docs/architecture-diagram.svg は今もさくら VPS 前提のまま。', status:'open', owner:'Muse', due:'', priority:'low', source:'その他', project:'twins works' },
 ];
