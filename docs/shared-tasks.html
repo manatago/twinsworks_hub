@@ -36,6 +36,7 @@
   .task.done { opacity:.65; }
   .task .top { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
   .task h3 { margin:0; font-size:15px; }
+  .tnum { display:inline-block; min-width:26px; text-align:center; background:#eef2ff; color:#3730a3; border-radius:6px; padding:1px 6px; margin-right:8px; font-size:13px; font-weight:700; }
   .task .meta { font-size:12px; color:var(--muted); margin-top:4px; display:flex; gap:12px; flex-wrap:wrap; }
   .task .desc { font-size:13px; margin:8px 0 0; white-space:pre-wrap; }
   .task .actions { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
@@ -114,6 +115,7 @@ const SEED = [
 ];
 function load(){ try { const raw = localStorage.getItem(KEY); if (raw) return JSON.parse(raw); } catch(e){} try { localStorage.setItem(KEY, JSON.stringify(SEED)); } catch(e){} return SEED.slice(); }
 let tasks = load();
+(function(){ let max = 0; tasks.forEach(t => { if (typeof t.n === 'number' && t.n > max) max = t.n; }); tasks.forEach(t => { if (typeof t.n !== 'number') t.n = ++max; }); })();
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(tasks)); } catch(e){} };
 const $ = id => document.getElementById(id);
 function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -149,7 +151,7 @@ function render(){
   list.sort((a,b) => (a.due || '9999') < (b.due || '9999') ? -1 : 1);
   $('list').innerHTML = list.length ? list.map(t => `
     <div class="task ${t.status === 'done' ? 'done' : ''}">
-      <div class="top"><h3>${esc(t.title)}</h3><span class="badge st-${t.status}">${STATUS_JA[t.status]}</span></div>
+      <div class="top"><h3><span class="tnum">${t.n}</span>${esc(t.title)}</h3><span class="badge st-${t.status}">${STATUS_JA[t.status]}</span></div>
       <div class="meta"><span>担当：${esc(t.owner)}</span><span>${dueLabel(t)}</span><span>由来：${esc(t.source)}</span><span>プロジェクト：${esc(t.project)}</span><span>優先度：${t.priority === 'high' ? '高' : t.priority === 'low' ? '低' : '普通'}</span></div>
       ${t.desc ? `<p class="desc">${esc(t.desc)}</p>` : ''}
       <div class="actions">
@@ -163,7 +165,7 @@ $('list').addEventListener('click', e => {
   const btn = e.target.closest('button[data-act]'); if (!btn) return;
   const t = tasks.find(x => x.id === btn.dataset.id); if (!t) return;
   if (btn.dataset.act === 'next') { t.status = STATUS_NEXT[t.status]; }
-  if (btn.dataset.act === 'del') { if (!confirm('「' + t.title + '」を削除しますか？')) return; tasks = tasks.filter(x => x.id !== t.id); }
+  if (btn.dataset.act === 'del') { if (!confirm('「' + t.n + '. ' + t.title + '」を削除しますか？')) return; tasks = tasks.filter(x => x.id !== t.id); }
   if (btn.dataset.act === 'edit') {
     const title = prompt('タイトル', t.title); if (title === null) return;
     const desc = prompt('説明', t.desc || ''); if (desc === null) return;
@@ -175,7 +177,7 @@ $('list').addEventListener('click', e => {
 $('addForm').addEventListener('submit', e => {
   e.preventDefault();
   const title = $('f-title').value.trim(); if (!title) return;
-  tasks.push({ id:'t-' + Date.now(), title, desc:$('f-desc').value.trim(),
+  tasks.push({ id:'t-' + Date.now(), n: tasks.reduce((m,x) => Math.max(m, x.n || 0), 0) + 1, title, desc:$('f-desc').value.trim(),
     status:$('f-status').value, owner:$('f-owner').value, due:$('f-due').value,
     priority:$('f-priority').value, source:$('f-source').value, project:$('f-project').value });
   save(); render(); e.target.reset();
