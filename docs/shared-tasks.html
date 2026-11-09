@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>共通タスク日常管理 — twins works</title>
+<style>
+  :root { --bg:#f6f5f2; --card:#fff; --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb;
+    --open:#2563eb; --prog:#b45309; --done:#15803d; --arch:#6b7280; --danger:#dc2626; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+    background:var(--bg); color:var(--ink); }
+  header { background:#111827; color:#fff; padding:18px 24px; }
+  header h1 { margin:0; font-size:20px; }
+  header p { margin:4px 0 0; font-size:12px; color:#d1d5db; }
+  main { max-width:960px; margin:0 auto; padding:20px 16px 60px; }
+  .counts { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+  .count { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 14px; min-width:110px; }
+  .count b { display:block; font-size:22px; }
+  .count span { font-size:12px; color:var(--muted); }
+  .count.overdue b { color:var(--danger); }
+  section.card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; }
+  h2 { font-size:15px; margin:0 0 12px; }
+  form.add { display:grid; grid-template-columns:2fr 1fr 1fr; gap:10px; }
+  form.add .wide { grid-column:1 / -1; }
+  label { font-size:12px; color:var(--muted); display:block; margin-bottom:3px; }
+  input, select, textarea { width:100%; padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; font-size:14px; background:#fff; }
+  textarea { resize:vertical; min-height:44px; }
+  button { cursor:pointer; border:0; border-radius:8px; padding:9px 16px; font-size:14px; }
+  .btn-primary { background:#111827; color:#fff; }
+  .btn-ghost { background:#f3f4f6; color:var(--ink); }
+  .btn-danger { background:#fef2f2; color:var(--danger); }
+  .filters { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .filters select { width:auto; }
+  .task { border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:10px; background:#fff; }
+  .task.done { opacity:.65; }
+  .task .top { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+  .task h3 { margin:0; font-size:15px; }
+  .task .meta { font-size:12px; color:var(--muted); margin-top:4px; display:flex; gap:12px; flex-wrap:wrap; }
+  .task .desc { font-size:13px; margin:8px 0 0; white-space:pre-wrap; }
+  .task .actions { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .task .actions button { padding:6px 10px; font-size:12px; }
+  .badge { display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; color:#fff; white-space:nowrap; }
+  .st-open { background:var(--open); } .st-in_progress { background:var(--prog); }
+  .st-done { background:var(--done); } .st-archived { background:var(--arch); }
+  .due-over { color:var(--danger); font-weight:700; }
+  .due-soon { color:var(--prog); font-weight:700; }
+  .note { font-size:12px; color:var(--muted); line-height:1.7; }
+  .empty { color:var(--muted); font-size:13px; padding:12px 0; }
+  @media (max-width:640px){ form.add { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>共通タスク日常管理 <span style="font-weight:400;font-size:13px;">— twins works（manatagoとの共同事業）</span></h1>
+  <p>個人タスク全体ではなく、共通基盤で管理する共有タスクだけを扱います。項目は twinsworks_hub のDB設計（tasks: title / description / status / owner / due_at / source / project / priority）に合わせています。</p>
+</header>
+<main>
+  <div class="counts" id="counts"></div>
+
+  <section class="card">
+    <h2>タスクを追加</h2>
+    <form class="add" id="addForm">
+      <div class="wide"><label>タイトル *</label><input id="f-title" required placeholder="例：パスワードログインの無効化"></div>
+      <div class="wide"><label>説明</label><textarea id="f-desc" placeholder="背景・決めること・参考リンクなど"></textarea></div>
+      <div><label>担当</label>
+        <select id="f-owner"><option>新谷</option><option>manatago（田子森）</option><option>Muse</option><option>未定</option></select></div>
+      <div><label>期限</label><input id="f-due" type="date"></div>
+      <div><label>優先度</label>
+        <select id="f-priority"><option value="normal">普通</option><option value="high">高</option><option value="low">低</option></select></div>
+      <div><label>由来</label>
+        <select id="f-source"><option>会議</option><option>Slack</option><option>メール</option><option>その他</option></select></div>
+      <div><label>プロジェクト</label>
+        <select id="f-project"><option>twins works</option><option>その他</option></select></div>
+      <div><label>状態</label>
+        <select id="f-status"><option value="open">未着手</option><option value="in_progress">進行中</option><option value="done">完了</option><option value="archived">アーカイブ</option></select></div>
+      <div style="grid-column:1/-1;"><button class="btn-primary" type="submit">追加する</button></div>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>タスク一覧</h2>
+    <div class="filters">
+      <select id="filter-status"><option value="">状態：すべて</option><option value="open">未着手</option><option value="in_progress">進行中</option><option value="done">完了</option><option value="archived">アーカイブ</option></select>
+      <select id="filter-owner"><option value="">担当：すべて</option><option>新谷</option><option>manatago（田子森）</option><option>Muse</option><option>未定</option></select>
+      <select id="filter-project"><option value="">プロジェクト：すべて</option><option>twins works</option><option>その他</option></select>
+      <label style="display:flex;align-items:center;gap:4px;"><input type="checkbox" id="filter-hide-done" style="width:auto;"> 完了・アーカイブを隠す</label>
+    </div>
+    <div id="list" style="margin-top:14px;"></div>
+  </section>
+
+  <section class="card">
+    <h2>データの扱い</h2>
+    <p class="note">このページは試作版です。入力したタスクはこのブラウザの localStorage にだけ保存されます（サーバーには送られません）。共通基盤（xvps）の構築とMCPサーバー実装が終われば、この画面はダッシュボードに置き換わります。<br>
+    下のボタンで JSON として書き出せるので、将来DBへ移すときの元データになります。</p>
+    <button class="btn-ghost" id="exportBtn">JSONで書き出す</button>
+    <button class="btn-ghost" id="importBtn">JSONから読み込む</button>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+  </section>
+</main>
+<script>
+const KEY = 'twins-shared-tasks-v1';
+const STATUS_JA = { open:'未着手', in_progress:'進行中', done:'完了', archived:'アーカイブ' };
+const STATUS_NEXT = { open:'in_progress', in_progress:'done', done:'archived', archived:'open' };
+const SEED = [
+  { id:'seed-1', title:'sudo をパスワードなし（NOPASSWD）にする可否 — manatagoの返答待ち', desc:'xvps の sin は sudo パスワード必須と確定済み（sudo -k 後に sudo -n true が失敗）。Slack DMで承認依頼済み（2026-11-09 13:38、Muse代理送信）。返答が来たら /etc/sudoers.d/sin-nopasswd を置く。', status:'open', owner:'manatago（田子森）', due:'2026-11-10', priority:'high', source:'Slack', project:'twins works' },
+  { id:'seed-2', title:'Meet議事録フォルダの Drive 共有', desc:'twins works の Meet 文字起こしが入るフォルダを sin646sp@gmail.com 宛てに共有してもらう。ユーザー本人が Slack で依頼済み（2026-11-09）。共有ドライブは現状0件、フォルダ共有で十分。', status:'open', owner:'manatago（田子森）', due:'2026-11-10', priority:'high', source:'Slack', project:'twins works' },
+  { id:'seed-3', title:'パスワードログインの無効化（11/10 会議で決定・実施）', desc:'前提の3経路（Mac・DefineR5・Muse）の鍵ログインは 2026-11-09 に確認済み。会議で合意すればその場で実施。', status:'open', owner:'新谷', due:'2026-11-10', priority:'high', source:'会議', project:'twins works' },
+  { id:'seed-4', title:'カーネル更新 CVE-2026-98432 の確認', desc:'xvps のカーネルは 7.0.0-14 で修正版より前。修正版が通常チャネルに出ていれば更新＋再起動、出ていなければ nftables 緩和策を判断。11/10 会議の議題。', status:'open', owner:'新谷', due:'2026-11-10', priority:'normal', source:'会議', project:'twins works' },
+  { id:'seed-5', title:'sakura-vps1 を閉じる日と LFS 移行完了の前後関係を確認', desc:'日程は manatago 担当。vps1 閉鎖前に LFS の移行と向き先切替・動作確認を終わらせる順序が前提。', status:'open', owner:'manatago（田子森）', due:'2026-11-10', priority:'high', source:'会議', project:'twins works' },
+  { id:'seed-6', title:'manatago側の MCP 利用確認', desc:'11/10 会議の宿題。', status:'open', owner:'manatago（田子森）', due:'2026-11-10', priority:'normal', source:'会議', project:'twins works' },
+  { id:'seed-7', title:'xvps 構築：Docker → clone → compose → マイグレーション → /health → Tailscale Serve', desc:'会議後に Muse が xvps 上で進める。Docker の有無は未確認。', status:'open', owner:'Muse', due:'', priority:'normal', source:'会議', project:'twins works' },
+  { id:'seed-8', title:'構成図を XServer 前提に更新', desc:'docs/architecture-diagram.svg は今もさくら VPS 前提のまま。', status:'open', owner:'Muse', due:'', priority:'low', source:'その他', project:'twins works' },
+];
+function load(){ try { const raw = localStorage.getItem(KEY); if (raw) return JSON.parse(raw); } catch(e){} localStorage.setItem(KEY, JSON.stringify(SEED)); return SEED.slice(); }
+let tasks = load();
+const save = () => localStorage.setItem(KEY, JSON.stringify(tasks));
+const $ = id => document.getElementById(id);
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function dueLabel(t){
+  if (!t.due) return '期限なし';
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(t.due + 'T00:00:00');
+  const diff = Math.round((d - today) / 86400000);
+  if (t.status === 'done' || t.status === 'archived') return '期限 ' + t.due;
+  if (diff < 0) return `<span class="due-over">期限切れ ${t.due}（${-diff}日前）</span>`;
+  if (diff === 0) return `<span class="due-over">期限：今日 ${t.due}</span>`;
+  if (diff === 1) return `<span class="due-soon">期限：明日 ${t.due}</span>`;
+  return '期限 ' + t.due;
+}
+function render(){
+  const fs = $('filter-status').value, fo = $('filter-owner').value, fp = $('filter-project').value;
+  const hideDone = $('filter-hide-done').checked;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const open = tasks.filter(t => t.status === 'open').length;
+  const prog = tasks.filter(t => t.status === 'in_progress').length;
+  const done = tasks.filter(t => t.status === 'done').length;
+  const overdue = tasks.filter(t => t.due && t.status !== 'done' && t.status !== 'archived' && new Date(t.due + 'T00:00:00') < today).length;
+  const dueToday = tasks.filter(t => t.due && t.status !== 'done' && t.status !== 'archived' && new Date(t.due + 'T00:00:00').getTime() === today.getTime()).length;
+  $('counts').innerHTML =
+    `<div class="count"><b>${open}</b><span>未着手</span></div>` +
+    `<div class="count"><b>${prog}</b><span>進行中</span></div>` +
+    `<div class="count"><b>${done}</b><span>完了</span></div>` +
+    `<div class="count overdue"><b>${overdue}</b><span>期限切れ</span></div>` +
+    `<div class="count"><b>${dueToday}</b><span>今日が期限</span></div>`;
+  const list = tasks.filter(t =>
+    (!fs || t.status === fs) && (!fo || t.owner === fo) && (!fp || t.project === fp) &&
+    !(hideDone && (t.status === 'done' || t.status === 'archived')));
+  list.sort((a,b) => (a.due || '9999') < (b.due || '9999') ? -1 : 1);
+  $('list').innerHTML = list.length ? list.map(t => `
+    <div class="task ${t.status === 'done' ? 'done' : ''}">
+      <div class="top"><h3>${esc(t.title)}</h3><span class="badge st-${t.status}">${STATUS_JA[t.status]}</span></div>
+      <div class="meta"><span>担当：${esc(t.owner)}</span><span>${dueLabel(t)}</span><span>由来：${esc(t.source)}</span><span>プロジェクト：${esc(t.project)}</span><span>優先度：${t.priority === 'high' ? '高' : t.priority === 'low' ? '低' : '普通'}</span></div>
+      ${t.desc ? `<p class="desc">${esc(t.desc)}</p>` : ''}
+      <div class="actions">
+        <button class="btn-ghost" data-act="next" data-id="${t.id}">→ ${STATUS_JA[STATUS_NEXT[t.status]]}にする</button>
+        <button class="btn-ghost" data-act="edit" data-id="${t.id}">編集</button>
+        <button class="btn-danger" data-act="del" data-id="${t.id}">削除</button>
+      </div>
+    </div>`).join('') : '<p class="empty">条件に合うタスクがありません。</p>';
+}
+$('list').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-act]'); if (!btn) return;
+  const t = tasks.find(x => x.id === btn.dataset.id); if (!t) return;
+  if (btn.dataset.act === 'next') { t.status = STATUS_NEXT[t.status]; }
+  if (btn.dataset.act === 'del') { if (!confirm('「' + t.title + '」を削除しますか？')) return; tasks = tasks.filter(x => x.id !== t.id); }
+  if (btn.dataset.act === 'edit') {
+    const title = prompt('タイトル', t.title); if (title === null) return;
+    const desc = prompt('説明', t.desc || ''); if (desc === null) return;
+    const due = prompt('期限（YYYY-MM-DD、なしは空欄）', t.due || ''); if (due === null) return;
+    t.title = title.trim() || t.title; t.desc = desc; t.due = due.trim();
+  }
+  save(); render();
+});
+$('addForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const title = $('f-title').value.trim(); if (!title) return;
+  tasks.push({ id:'t-' + Date.now(), title, desc:$('f-desc').value.trim(),
+    status:$('f-status').value, owner:$('f-owner').value, due:$('f-due').value,
+    priority:$('f-priority').value, source:$('f-source').value, project:$('f-project').value });
+  save(); render(); e.target.reset();
+});
+['filter-status','filter-owner','filter-project','filter-hide-done'].forEach(id => $(id).addEventListener('change', render));
+$('exportBtn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(tasks, null, 2)], { type:'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'twins-shared-tasks.json'; a.click(); URL.revokeObjectURL(a.href);
+});
+$('importBtn').addEventListener('click', () => $('importFile').click());
+$('importFile').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => { try { const data = JSON.parse(r.result); if (!Array.isArray(data)) throw 0; tasks = data; save(); render(); } catch { alert('読み込めませんでした。JSON形式のタスク一覧ファイルを選んでください。'); } };
+  r.readAsText(f);
+});
+render();
+</script>
+</body>
+</html>
