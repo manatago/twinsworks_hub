@@ -7,6 +7,9 @@ v1 ではダッシュボードからの書き込みは行わない（docs/mcp-to
 
 デザインは試作モック（docs/shared-tasks.html）の見た目に合わせる。
 モック側の追加フォームや操作ボタンは v1 の対象外なので持ち込まない。
+
+一覧は「未完了」「完了」の2タブに分ける（2026-11-10 決定）。
+各タスクはどちらか一方のタブにだけ出る（重複表示はしない）。
 """
 
 import html
@@ -30,6 +33,7 @@ STATUS_LABELS = {
     "archived": "アーカイブ",
 }
 ACTIVE_STATUSES = ("open", "in_progress")
+DONE_STATUSES = ("done", "archived")
 PRIORITY_LABELS = {"high": "高", "normal": "普通", "low": "低"}
 
 
@@ -51,24 +55,28 @@ def _parse_dt(value: str | None) -> datetime | None:
         return None
 
 
-def _sort_key(task: dict, now: datetime):
-    status = task["status"]
+def _sort_key_active(task: dict, now: datetime):
     due = _parse_dt(task.get("due_at"))
-    if status in ACTIVE_STATUSES:
-        if due is not None and due < now:
-            group = 0  # 期限切れ
-        elif due is not None and due < now + timedelta(hours=48):
-            group = 1  # 48時間以内に期限
-        elif status == "in_progress":
-            group = 2
-        else:
-            group = 3
-    elif status == "done":
-        group = 4
+    if due is not None and due < now:
+        group = 0  # 期限切れ
+    elif due is not None and due < now + timedelta(hours=48):
+        group = 1  # 48時間以内に期限
+    elif task["status"] == "in_progress":
+        group = 2
     else:
-        group = 5
+        group = 3
     due_key = due.timestamp() if due is not None else float("inf")
     return (group, due_key, task.get("created_at") or "")
+
+
+def _sort_key_done(task: dict):
+    completed = _parse_dt(task.get("completed_at"))
+    # 完了したものは新しい順。completed_at が無いものは後ろ。
+    return (
+        completed is None,
+        -(completed.timestamp() if completed is not None else 0),
+        task.get("created_at") or "",
+    )
 
 
 def _due_label(task: dict, today) -> str:
@@ -138,6 +146,10 @@ _PAGE = """<!DOCTYPE html>
   .count.overdue b {{ color:var(--danger); }}
   section.card {{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; }}
   h2 {{ font-size:15px; margin:0 0 12px; }}
+  .tabs {{ display:flex; gap:6px; margin-bottom:14px; }}
+  .tab {{ padding:8px 18px; border:1px solid var(--line); border-radius:999px;
+          background:#f3f4f6; color:var(--ink); text-decoration:none; font-size:14px; }}
+  .tab.active {{ background:#111827; color:#fff; border-color:#111827; font-weight:700; }}
   select {{ padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; font-size:14px; background:#fff; }}
   button {{ cursor:pointer; border:0; border-radius:8px; padding:9px 16px; font-size:14px; }}
   .btn-primary {{ background:#111827; color:#fff; }}
@@ -168,7 +180,9 @@ _PAGE = """<!DOCTYPE html>
   <div class="counts">{counts}</div>
   <section class="card">
     <h2>タスク一覧</h2>
+    <div class="tabs">{tabs}</div>
     <form class="filters" method="get" action="/">
+      <input type="hidden" name="tab" value="{tab}">
       <select name="status">
         <option value="">状態：すべて</option>{status_options}
       </select>
@@ -178,14 +192,11 @@ _PAGE = """<!DOCTYPE html>
       <select name="project">
         <option value="">プロジェクト：すべて</option>{project_options}
       </select>
-      <label style="display:flex;align-items:center;gap:4px;font-size:13px;">
-        <input type="checkbox" name="hide_done" value="1" style="width:auto;"{hide_done_checked}> 完了・アーカイブを隠す
-      </label>
       <button class="btn-primary" type="submit" style="padding:7px 14px;font-size:13px;">絞り込む</button>
     </form>
     <div style="margin-top:14px;">{tasks_html}</div>
   </section>
-  <p class="note">並び順：期限切れ → 48時間以内に期限 → 進行中 → その他（期限順）→ 完了 → アーカイブ。長期タスクも含め、すべての一覧をここに表示します。</p>
+  <p class="note">未完了タブの並び順：期限切れ → 48時間以内に期限 → 進行中 → その他（期限順）。完了タブは完了した順（新しい順）です。台帳番号は登録順で固定され、タブや絞り込みでは変わりません。</p>
 </main>
 </body>
 </html>"""
@@ -204,15 +215,16 @@ def _options(values, current, labels=None):
 
 
 @router.get("/", response_class=HTMLResponse)
-def dashboard(status: str | None = None, owner: str | None = None,
-              project: str | None = None, hide_done: str | None = None):
+def dashboard(tab: str | None = None, status: str | None = None,
+              owner: str | None = None, project: str | None = None):
+    tab = "done" if tab == "done" else "active"
     now = datetime.now(timezone.utc)
     today = now.astimezone(JST).date()
     with _readonly():
         all_tasks = services.tasks_list(limit=500)
         identities = services.identities_list()
     owners = {i["id"]: i["name"] for i in identities}
-    # 台帳番号は登録順（created_at 順）で固定する。絞り込みでは変わらない。
+    # 台帳番号は登録順（created_at 順）で固定する。タブ・絞り込みでは変わらない。
     numbers = {t["id"]: n for n, t in enumerate(all_tasks, start=1)}
 
     def _is_overdue(t):
@@ -243,16 +255,25 @@ def dashboard(status: str | None = None, owner: str | None = None,
         ]
     )
 
-    tasks = list(all_tasks)
-    if status:
+    active_count = sum(1 for t in all_tasks if t["status"] in ACTIVE_STATUSES)
+    done_count = sum(1 for t in all_tasks if t["status"] in DONE_STATUSES)
+    tabs_html = (
+        f'<a class="tab{" active" if tab == "active" else ""}" href="/?tab=active">未完了（{active_count}）</a>'
+        f'<a class="tab{" active" if tab == "done" else ""}" href="/?tab=done">完了（{done_count}）</a>'
+    )
+
+    tab_statuses = ACTIVE_STATUSES if tab == "active" else DONE_STATUSES
+    tasks = [t for t in all_tasks if t["status"] in tab_statuses]
+    if status in tab_statuses:
         tasks = [t for t in tasks if t["status"] == status]
     if owner:
         tasks = [t for t in tasks if owners.get(t.get("owner_identity_id") or "") == owner]
     if project:
         tasks = [t for t in tasks if t.get("project") == project]
-    if hide_done:
-        tasks = [t for t in tasks if t["status"] not in ("done", "archived")]
-    tasks.sort(key=lambda t: _sort_key(t, now))
+    if tab == "active":
+        tasks.sort(key=lambda t: _sort_key_active(t, now))
+    else:
+        tasks.sort(key=_sort_key_done)
 
     if tasks:
         tasks_html = "\n".join(
@@ -263,14 +284,13 @@ def dashboard(status: str | None = None, owner: str | None = None,
 
     return _PAGE.format(
         counts=counts_html,
-        status_options=_options(
-            list(STATUS_LABELS), status or "", labels=STATUS_LABELS
-        ),
+        tabs=tabs_html,
+        tab=tab,
+        status_options=_options(list(tab_statuses), status or "", labels=STATUS_LABELS),
         owner_options=_options(sorted(set(owners.values())), owner or ""),
         project_options=_options(
             sorted({t["project"] for t in all_tasks if t.get("project")}),
             project or "",
         ),
-        hide_done_checked=" checked" if hide_done else "",
         tasks_html=tasks_html,
     )
