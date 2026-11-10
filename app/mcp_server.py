@@ -5,6 +5,7 @@
 """
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 from . import services
 
@@ -17,6 +18,12 @@ mcp = FastMCP(
     stateless_http=True,
     json_response=True,
     streamable_http_path="/mcp",
+    # 公開は Tailscale Serve（テールネット内のみ）が担い、認証は API キーで
+    # 行うため、SDK 側の Host 検証（DNS リバインディング保護）は無効化する。
+    # これを有効にしたままだと *.ts.net のホスト名で接続できない。
+    transport_security=TransportSecuritySettings(
+        enable_dns_rebinding_protection=False
+    ),
 )
 
 
