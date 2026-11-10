@@ -73,14 +73,15 @@ def db_ok() -> bool:
         return False
 
 
-@app.get("/")
-def root():
-    return {"service": "twinsworks_hub", "status": "ok"}
-
-
 @app.get("/health")
 def health():
     return {"status": "ok", "db": db_ok()}
+
+
+# ダッシュボード（人間用・読み取り専用）が / を担う
+from .dashboard import router as dashboard_router  # noqa: E402
+
+app.include_router(dashboard_router)
 
 
 # MCP はルートにマウントし、サブアプリ側のパス（/mcp）で受ける。
