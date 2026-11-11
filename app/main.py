@@ -103,6 +103,80 @@ for _repo in ("ResearchJanken", "ResearchLiveChat"):
         )
 
 
+_NAV_BAR = (
+    '<div style="background:#111827;color:#e5e7eb;padding:8px 14px;'
+    "font-family:-apple-system,'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;"
+    'font-size:13px;">'
+    '<a href="/" style="color:#fff;text-decoration:none;font-weight:700;">'
+    "← twins works コンソール</a>"
+    '<span style="color:#9ca3af;margin-left:10px;">Research サマリー</span>'
+    "</div>"
+).encode("utf-8")
+
+
+class ResearchNavMiddleware:
+    """ /research/ 配下の HTML に、コンソールへ戻るバーを配信時に差し込む。
+
+    サマリー HTML は Mac mini 側の生成物なので、ファイル自体は変更しない。
+    HTML レスポンスの <body> 直後にだけバーを注入する（画像等は素通し）。
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or not scope.get("path", "").startswith("/research/"):
+            await self.app(scope, receive, send)
+            return
+        start_msg = None
+        body_parts = []
+
+        async def capture(message):
+            nonlocal start_msg
+            if message["type"] == "http.response.start":
+                start_msg = message
+            elif message["type"] == "http.response.body":
+                body_parts.append(message.get("body", b""))
+                if not message.get("more_body"):
+                    await self._flush(scope, send, start_msg, b"".join(body_parts))
+            else:
+                await send(message)
+
+        await self.app(scope, receive, capture)
+
+    async def _flush(self, scope, send, start_msg, body):
+        headers = {
+            k.decode("latin-1").lower(): v.decode("latin-1")
+            for k, v in (start_msg or {}).get("headers", [])
+        }
+        is_html = (
+            (start_msg or {}).get("status") == 200
+            and headers.get("content-type", "").startswith("text/html")
+            and scope.get("method") == "GET"
+        )
+        if is_html:
+            lower = body.lower()
+            idx = lower.find(b"<body")
+            if idx >= 0:
+                end = lower.find(b">", idx)
+                if end >= 0:
+                    body = body[: end + 1] + _NAV_BAR + body[end + 1 :]
+                    new_headers = [
+                        (k, v)
+                        for k, v in start_msg["headers"]
+                        if k.decode("latin-1").lower() != "content-length"
+                    ]
+                    new_headers.append(
+                        (b"content-length", str(len(body)).encode("latin-1"))
+                    )
+                    start_msg = {**start_msg, "headers": new_headers}
+        await send(start_msg)
+        await send({"type": "http.response.body", "body": body})
+
+
+app.add_middleware(ResearchNavMiddleware)
+
+
 # MCP はルートにマウントし、サブアプリ側のパス（/mcp）で受ける。
 # / と /health の後に置くことで、そちらが優先される。
 app.mount("/", ApiKeyMiddleware(mcp_app))
