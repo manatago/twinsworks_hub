@@ -93,13 +93,19 @@ from pathlib import Path as _Path  # noqa: E402
 from fastapi.staticfiles import StaticFiles as _StaticFiles  # noqa: E402
 
 _RESEARCH_BASE = _Path(os.environ.get("RESEARCH_BASE_DIR", "/research"))
-for _repo in ("ResearchJanken", "ResearchLiveChat"):
-    _dash_dir = _RESEARCH_BASE / _repo / "reports" / "collect_dashboards"
+_RESEARCH_MOUNTS = {
+    # マウント名: (clone のリポジトリ名, 配信するサブディレクトリ)
+    "ResearchJanken": ("ResearchJanken", "reports/collect_dashboards"),
+    "ResearchJanken-dlsite": ("ResearchJanken", "reports/dlsite"),
+    "ResearchLiveChat": ("ResearchLiveChat", "reports/collect_dashboards"),
+}
+for _mount, (_repo_dir, _sub) in _RESEARCH_MOUNTS.items():
+    _dash_dir = _RESEARCH_BASE / _repo_dir / _sub
     if _dash_dir.is_dir():
         app.mount(
-            f"/research/{_repo}",
+            f"/research/{_mount}",
             _StaticFiles(directory=str(_dash_dir), html=True),
-            name=f"research-{_repo}",
+            name=f"research-{_mount}",
         )
 
 
@@ -225,7 +231,11 @@ _VIEW_PAGE = """<!DOCTYPE html>
 
 @app.get("/research/view/{repo}/{rest:path}", response_class=_HTMLResponse)
 def research_view(repo: str, rest: str):
-    entries = {"ResearchJanken": "latest.html", "ResearchLiveChat": "index.html"}
+    entries = {
+        "ResearchJanken": "latest.html",
+        "ResearchJanken-dlsite": "latest.html",
+        "ResearchLiveChat": "index.html",
+    }
     if repo not in entries:
         raise _HTTPException(status_code=404)
     entry = rest or entries[repo]

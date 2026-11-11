@@ -126,8 +126,10 @@ def _task_html(task: dict, number: int, owners: dict, today) -> str:
 
 
 RESEARCH_ITEMS = [
-    ("ResearchJanken", "latest.html"),
-    ("ResearchLiveChat", "index.html"),
+    # (マウント名, 入口ファイル, サイドバーの表示名, Pull 状態を見るリポジトリ名)
+    ("ResearchJanken", "latest.html", "ResearchJanken（Ci-en）", "ResearchJanken"),
+    ("ResearchJanken-dlsite", "latest.html", "ResearchJanken（DLsite 販売）", "ResearchJanken"),
+    ("ResearchLiveChat", "index.html", "ResearchLiveChat", "ResearchLiveChat"),
 ]
 
 
@@ -146,14 +148,16 @@ def _research_sidebar() -> str:
     except Exception:
         status = {}
     items = []
-    for repo, entry in RESEARCH_ITEMS:
+    for mount, entry, label, status_repo in RESEARCH_ITEMS:
         upd = ""
-        head = ((status.get(repo) or {}).get("head") or "").strip()
+        head = ((status.get(status_repo) or {}).get("head") or "").strip()
         if head:
             parts = head.split()
             when = " ".join(parts[1:3]) if len(parts) >= 3 else head
             upd = f'<span class="upd">最終更新：{html.escape(when)}</span>'
-        items.append(f'<a href="/research/view/{repo}/{entry}">{repo}</a>{upd}')
+        items.append(
+            f'<a href="/research/view/{mount}/{entry}">{html.escape(label)}</a>{upd}'
+        )
     return (
         '<div class="brand">twins works</div>'
         '<a href="/" class="active">共有タスク</a>'
