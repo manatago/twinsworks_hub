@@ -13,6 +13,8 @@ v1 ではダッシュボードからの書き込みは行わない（docs/mcp-to
 """
 
 import html
+import json
+import os
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
@@ -123,6 +125,44 @@ def _task_html(task: dict, number: int, owners: dict, today) -> str:
     )
 
 
+RESEARCH_ITEMS = [
+    ("ResearchJanken", "latest.html"),
+    ("ResearchLiveChat", "index.html"),
+]
+
+
+def _research_sidebar() -> str:
+    """左サイドバー。共有タスクへの導線と、Research サマリーへのリンク。
+
+    最終更新は xvps 上の定期 Pull が書く pull_status.json から読む
+    （RESEARCH_BASE_DIR、既定 /research。アプリへは読み取り専用マウント）。
+    読めない場合は日時なしでリンクだけ出す。
+    """
+    base = os.environ.get("RESEARCH_BASE_DIR", "/research")
+    status = {}
+    try:
+        with open(os.path.join(base, "pull_status.json"), encoding="utf-8") as f:
+            status = json.load(f)
+    except Exception:
+        status = {}
+    items = []
+    for repo, entry in RESEARCH_ITEMS:
+        upd = ""
+        head = ((status.get(repo) or {}).get("head") or "").strip()
+        if head:
+            parts = head.split()
+            when = " ".join(parts[1:3]) if len(parts) >= 3 else head
+            upd = f'<span class="upd">最終更新：{html.escape(when)}</span>'
+        items.append(f'<a href="/research/{repo}/{entry}">{repo}</a>{upd}')
+    return (
+        '<div class="brand">twins works</div>'
+        '<a href="/" class="active">共有タスク</a>'
+        '<div class="sec">Research サマリー</div>'
+        + "".join(items)
+        + '<p class="foot">サマリーは xvps 上の clone から配信しています（毎時自動 Pull）。</p>'
+    )
+
+
 _PAGE = """<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -139,6 +179,17 @@ _PAGE = """<!DOCTYPE html>
   header h1 {{ margin:0; font-size:20px; }}
   header p {{ margin:4px 0 0; font-size:12px; color:#d1d5db; }}
   main {{ max-width:960px; margin:0 auto; padding:20px 16px 60px; }}
+  .layout {{ display:flex; align-items:stretch; min-height:100vh; }}
+  .side {{ width:232px; flex:0 0 232px; background:#111827; color:#e5e7eb; padding:18px 14px; position:sticky; top:0; height:100vh; overflow-y:auto; }}
+  .side .brand {{ font-size:13px; font-weight:700; letter-spacing:.04em; color:#fff; margin:2px 6px 14px; }}
+  .side a {{ display:block; color:#e5e7eb; text-decoration:none; padding:8px 10px; border-radius:8px; font-size:13px; margin-bottom:2px; }}
+  .side a:hover {{ background:#1f2937; }}
+  .side a.active {{ background:#1f2937; color:#fff; font-weight:700; }}
+  .side .sec {{ font-size:11px; color:#9ca3af; margin:16px 6px 6px; letter-spacing:.05em; }}
+  .side .upd {{ display:block; font-size:11px; color:#9ca3af; padding:0 10px; margin:-2px 0 6px; }}
+  .side .foot {{ font-size:11px; color:#9ca3af; margin:18px 6px 0; line-height:1.6; }}
+  .content {{ flex:1; min-width:0; }}
+  @media (max-width:760px) {{ .layout {{ flex-direction:column; }} .side {{ width:auto; flex:none; height:auto; position:static; }} }}
   .counts {{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }}
   .count {{ background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 14px; min-width:110px; }}
   .count b {{ display:block; font-size:22px; }}
@@ -172,6 +223,9 @@ _PAGE = """<!DOCTYPE html>
 </style>
 </head>
 <body>
+<div class="layout">
+<aside class="side">{sidebar}</aside>
+<div class="content">
 <header>
   <h1>twins works 共有タスク管理 <span style="font-weight:400;font-size:13px;">— manatagoとの共同事業</span></h1>
   <p>共通基盤で管理する共有タスクだけを表示します。この画面は読み取り専用です。タスクの登録・変更はエージェント（MCP）経由で行います。</p>
@@ -198,6 +252,8 @@ _PAGE = """<!DOCTYPE html>
   </section>
   <p class="note">未完了タブの並び順：期限切れ → 48時間以内に期限 → 進行中 → その他（期限順）。完了タブは完了した順（新しい順）です。台帳番号は登録順で固定され、タブや絞り込みでは変わりません。</p>
 </main>
+</div>
+</div>
 </body>
 </html>"""
 
@@ -283,6 +339,7 @@ def dashboard(tab: str | None = None, status: str | None = None,
         tasks_html = '<p class="empty">条件に合うタスクがありません。</p>'
 
     return _PAGE.format(
+        sidebar=_research_sidebar(),
         counts=counts_html,
         tabs=tabs_html,
         tab=tab,

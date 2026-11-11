@@ -84,6 +84,25 @@ from .dashboard import router as dashboard_router  # noqa: E402
 app.include_router(dashboard_router)
 
 
+# Research サマリーの静的配信。
+# xvps 上の clone（~/research）を読み取り専用マウントし、各リポジトリの
+# reports/collect_dashboards/ だけを /research/<repo>/ で配信する。
+# clone が無い環境（ローカル等）ではマウント自体をしない。
+from pathlib import Path as _Path  # noqa: E402
+
+from fastapi.staticfiles import StaticFiles as _StaticFiles  # noqa: E402
+
+_RESEARCH_BASE = _Path(os.environ.get("RESEARCH_BASE_DIR", "/research"))
+for _repo in ("ResearchJanken", "ResearchLiveChat"):
+    _dash_dir = _RESEARCH_BASE / _repo / "reports" / "collect_dashboards"
+    if _dash_dir.is_dir():
+        app.mount(
+            f"/research/{_repo}",
+            _StaticFiles(directory=str(_dash_dir), html=True),
+            name=f"research-{_repo}",
+        )
+
+
 # MCP はルートにマウントし、サブアプリ側のパス（/mcp）で受ける。
 # / と /health の後に置くことで、そちらが優先される。
 app.mount("/", ApiKeyMiddleware(mcp_app))

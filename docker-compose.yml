@@ -27,6 +27,10 @@ services:
     ports:
       # テールネット内公開は Tailscale Serve で行う前提で、ホスト側は localhost のみ。
       - "127.0.0.1:8000:8000"
+    volumes:
+      # Research リポジトリの clone（xvps 上の ~/research）を読み取り専用で取り込む。
+      # アプリは reports/collect_dashboards/ の配信と pull_status.json の参照だけに使う。
+      - /home/sin/research:/research:ro
 
 volumes:
   pgdata:
