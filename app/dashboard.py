@@ -128,7 +128,7 @@ def _task_html(task: dict, number: int, owners: dict, today) -> str:
 RESEARCH_ITEMS = [
     # (マウント名, 入口ファイル, サイドバーの表示名, Pull 状態を見るリポジトリ名)
     ("ResearchJanken", "latest.html", "ResearchJanken（Ci-en）", "ResearchJanken"),
-    ("ResearchJanken-dlsite", "latest.html", "ResearchJanken（DLsite 販売）", "ResearchJanken"),
+    ("ResearchJanken-dlsite", "latest.html", "ResearchJanken（DLsite）", "ResearchJanken"),
     ("ResearchLiveChat", "index.html", "ResearchLiveChat", "ResearchLiveChat"),
 ]
 
