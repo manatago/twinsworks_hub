@@ -119,12 +119,85 @@ _NAV_BAR = (
     "</div>"
 ).encode("utf-8")
 
+# DLsite 販売サマリー専用の操作性拡張（配信時にだけ注入する）。
+# 線（polyline）の当たり判定を太くし、ホバーで商品名のツールチップ、
+# クリックで同じ data-series の凡例へスクロール＋強調表示する。
+# 線と凡例の対応は元ページの data-series 属性を使う。
+_DL_ENHANCE = """
+<style>
+#muse-tip { position:fixed; z-index:9999; pointer-events:none; background:#111827; color:#fff;
+  padding:6px 10px; border-radius:6px; font-size:12.5px; max-width:340px; display:none;
+  box-shadow:0 2px 8px rgba(0,0,0,.3); }
+.legend.muse-flash .legend-label { fill:#dc2626 !important; font-weight:700; }
+</style>
+<div id="muse-tip"></div>
+<script>
+(function () {
+  var tip = document.getElementById("muse-tip");
+  if (!tip) return;
+  function seriesName(g, svg) {
+    var t = g.querySelector("circle title");
+    if (t && t.textContent) return t.textContent.split("\\n")[0];
+    var id = g.getAttribute("data-series");
+    if (id && svg) {
+      var lg = svg.querySelector('.legend[data-series="' + id + '"] .legend-label');
+      if (lg) return lg.textContent;
+    }
+    return id || "";
+  }
+  document.querySelectorAll("svg").forEach(function (svg) {
+    svg.querySelectorAll(".series").forEach(function (g) {
+      var line = g.querySelector("polyline") || g.querySelector("path");
+      if (!line) return;
+      var hit = line.cloneNode(false);
+      hit.removeAttribute("class");
+      hit.style.stroke = "rgba(0,0,0,0)";
+      hit.style.strokeWidth = "14px";
+      hit.style.fill = "none";
+      hit.style.pointerEvents = "stroke";
+      hit.style.cursor = "pointer";
+      line.parentNode.insertBefore(hit, line.nextSibling);
+      var name = seriesName(g, svg);
+      hit.addEventListener("mouseenter", function () {
+        tip.textContent = name;
+        tip.style.display = "block";
+        line.style.strokeWidth = "4px";
+      });
+      hit.addEventListener("mousemove", function (e) {
+        tip.style.left = Math.min(e.clientX + 14, window.innerWidth - 360) + "px";
+        tip.style.top = Math.min(e.clientY + 14, window.innerHeight - 60) + "px";
+      });
+      hit.addEventListener("mouseleave", function () {
+        tip.style.display = "none";
+        line.style.strokeWidth = "";
+      });
+      hit.addEventListener("click", function () {
+        var id = g.getAttribute("data-series");
+        var lg = id && svg.querySelector('.legend[data-series="' + id + '"]');
+        if (lg) {
+          lg.scrollIntoView({ behavior: "smooth", block: "center" });
+          lg.classList.add("muse-flash");
+          setTimeout(function () { lg.classList.remove("muse-flash"); }, 1800);
+        }
+      });
+    });
+  });
+})();
+</script>
+""".encode("utf-8")
+
+_DL_PREFIX = "/research/ResearchJanken-dlsite/"
+
 
 class ResearchNavMiddleware:
-    """ /research/ 配下の HTML に、コンソールへ戻るバーを配信時に差し込む。
+    """ /research/ 配下の HTML への配信時加工。
 
     サマリー HTML は Mac mini 側の生成物なので、ファイル自体は変更しない。
-    HTML レスポンスの <body> 直後にだけバーを注入する（画像等は素通し）。
+    - 通常の HTML には <body> 直後へコンソールへ戻るバーを注入する
+      （ラッパーページの iframe 内表示＝embed=1 では付けない）。
+    - DLsite 販売サマリーには、線ホバーで商品名ツールチップ／クリックで
+      凡例へジャンプする拡張スクリプトも注入する（embed 時も有効）。
+    画像など HTML 以外は素通しする。
     """
 
     def __init__(self, app):
@@ -134,7 +207,9 @@ class ResearchNavMiddleware:
         if scope["type"] != "http" or not scope.get("path", "").startswith("/research/"):
             await self.app(scope, receive, send)
             return
-        if b"embed=1" in (scope.get("query_string") or b""):
+        embed = b"embed=1" in (scope.get("query_string") or b"")
+        dlsite = scope.get("path", "").startswith(_DL_PREFIX)
+        if embed and not dlsite:
             # ラッパーページの iframe 内表示ではバーを付けない（二重のナビ防止）
             await self.app(scope, receive, send)
             return
@@ -165,21 +240,28 @@ class ResearchNavMiddleware:
             and scope.get("method") == "GET"
         )
         if is_html:
-            lower = body.lower()
-            idx = lower.find(b"<body")
-            if idx >= 0:
-                end = lower.find(b">", idx)
-                if end >= 0:
-                    body = body[: end + 1] + _NAV_BAR + body[end + 1 :]
-                    new_headers = [
-                        (k, v)
-                        for k, v in start_msg["headers"]
-                        if k.decode("latin-1").lower() != "content-length"
-                    ]
-                    new_headers.append(
-                        (b"content-length", str(len(body)).encode("latin-1"))
-                    )
-                    start_msg = {**start_msg, "headers": new_headers}
+            embed = b"embed=1" in (scope.get("query_string") or b"")
+            dlsite = scope.get("path", "").startswith(_DL_PREFIX)
+            if not embed:
+                lower = body.lower()
+                idx = lower.find(b"<body")
+                if idx >= 0:
+                    end = lower.find(b">", idx)
+                    if end >= 0:
+                        body = body[: end + 1] + _NAV_BAR + body[end + 1 :]
+            if dlsite:
+                close = body.lower().rfind(b"</body>")
+                if close >= 0:
+                    body = body[:close] + _DL_ENHANCE + body[close:]
+            new_headers = [
+                (k, v)
+                for k, v in start_msg["headers"]
+                if k.decode("latin-1").lower() != "content-length"
+            ]
+            new_headers.append(
+                (b"content-length", str(len(body)).encode("latin-1"))
+            )
+            start_msg = {**start_msg, "headers": new_headers}
         await send(start_msg)
         await send({"type": "http.response.body", "body": body})
 
