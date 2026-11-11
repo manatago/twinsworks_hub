@@ -198,6 +198,8 @@ class ResearchNavMiddleware:
     - DLsite 販売サマリーには、線ホバーで商品名ツールチップ／クリックで
       凡例へジャンプする拡張スクリプトも注入する（embed 時も有効）。
     画像など HTML 以外は素通しする。
+    注入は ETag / Last-Modified に表れないため、条件付きリクエストは
+    無効化し、注入済み HTML には Cache-Control: no-cache を付ける。
     """
 
     def __init__(self, app):
@@ -207,6 +209,16 @@ class ResearchNavMiddleware:
         if scope["type"] != "http" or not scope.get("path", "").startswith("/research/"):
             await self.app(scope, receive, send)
             return
+        # 配信時の注入はファイルの ETag / Last-Modified に表れないため、
+        # 条件付きリクエストで 304 が返るとブラウザに古い注入前ページが残る。
+        # /research/ では条件付きヘッダを落として常に 200 で返す。
+        scope = dict(scope)
+        scope["headers"] = [
+            (k, v)
+            for k, v in scope.get("headers", [])
+            if k.decode("latin-1").lower()
+            not in ("if-none-match", "if-modified-since")
+        ]
         embed = b"embed=1" in (scope.get("query_string") or b"")
         dlsite = scope.get("path", "").startswith(_DL_PREFIX)
         if embed and not dlsite:
@@ -256,11 +268,14 @@ class ResearchNavMiddleware:
             new_headers = [
                 (k, v)
                 for k, v in start_msg["headers"]
-                if k.decode("latin-1").lower() != "content-length"
+                if k.decode("latin-1").lower()
+                not in ("content-length", "cache-control")
             ]
             new_headers.append(
                 (b"content-length", str(len(body)).encode("latin-1"))
             )
+            # 注入内容はファイルの更新と連動しないので、再検証を必須にする
+            new_headers.append((b"cache-control", b"no-cache"))
             start_msg = {**start_msg, "headers": new_headers}
         await send(start_msg)
         await send({"type": "http.response.body", "body": body})
