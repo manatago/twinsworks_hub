@@ -120,9 +120,10 @@ _NAV_BAR = (
 ).encode("utf-8")
 
 # DLsite 販売サマリー専用の操作性拡張（配信時にだけ注入する）。
-# 線（polyline）の当たり判定を太くし、ホバーで商品名のツールチップ、
-# クリックで同じ data-series の凡例へスクロール＋強調表示する。
-# 線と凡例の対応は元ページの data-series 属性を使う。
+# SVG 全体でマウス位置を受け、座標から最も近い線を幾何計算で特定する
+# （透明ストロークへのヒットテストはブラウザ差異で不発があり得るため使わない）。
+# ホバーで商品名のツールチップ、クリックで同じ data-series の凡例へ
+# スクロール＋強調表示する。線と凡例の対応は元ページの data-series 属性。
 _DL_ENHANCE = """
 <style>
 #muse-tip { position:fixed; z-index:9999; pointer-events:none; background:#111827; color:#fff;
@@ -145,41 +146,91 @@ _DL_ENHANCE = """
     }
     return id || "";
   }
+  function distSeg(px, py, x1, y1, x2, y2) {
+    var dx = x2 - x1, dy = y2 - y1, l2 = dx * dx + dy * dy;
+    var t = l2 ? ((px - x1) * dx + (py - y1) * dy) / l2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    var cx = x1 + t * dx, cy = y1 + t * dy;
+    return Math.sqrt((px - cx) * (px - cx) + (py - cy) * (py - cy));
+  }
   document.querySelectorAll("svg").forEach(function (svg) {
+    var items = [];
     svg.querySelectorAll(".series").forEach(function (g) {
-      var line = g.querySelector("polyline") || g.querySelector("path");
-      if (!line) return;
-      var hit = line.cloneNode(false);
-      hit.removeAttribute("class");
-      hit.style.stroke = "rgba(0,0,0,0)";
-      hit.style.strokeWidth = "14px";
-      hit.style.fill = "none";
-      hit.style.pointerEvents = "stroke";
-      hit.style.cursor = "pointer";
-      line.parentNode.insertBefore(hit, line.nextSibling);
-      var name = seriesName(g, svg);
-      hit.addEventListener("mouseenter", function () {
-        tip.textContent = name;
-        tip.style.display = "block";
-        line.style.strokeWidth = "4px";
-      });
-      hit.addEventListener("mousemove", function (e) {
-        tip.style.left = Math.min(e.clientX + 14, window.innerWidth - 360) + "px";
-        tip.style.top = Math.min(e.clientY + 14, window.innerHeight - 60) + "px";
-      });
-      hit.addEventListener("mouseleave", function () {
-        tip.style.display = "none";
-        line.style.strokeWidth = "";
-      });
-      hit.addEventListener("click", function () {
-        var id = g.getAttribute("data-series");
-        var lg = id && svg.querySelector('.legend[data-series="' + id + '"]');
-        if (lg) {
-          lg.scrollIntoView({ behavior: "smooth", block: "center" });
-          lg.classList.add("muse-flash");
-          setTimeout(function () { lg.classList.remove("muse-flash"); }, 1800);
+      var line = g.querySelector("polyline");
+      if (!line || !line.points || line.points.length < 2) return;
+      var pts = [];
+      for (var i = 0; i < line.points.length; i++) {
+        pts.push([line.points[i].x, line.points[i].y]);
+      }
+      var id = g.getAttribute("data-series");
+      var lg = id ? svg.querySelector('.legend[data-series="' + id + '"]') : null;
+      items.push({ g: g, line: line, pts: pts, name: seriesName(g, svg), legend: lg });
+    });
+    if (!items.length) return;
+    var current = null;
+    function toSvg(e) {
+      var m = svg.getScreenCTM();
+      if (!m) return null;
+      var pt = svg.createSVGPoint();
+      pt.x = e.clientX; pt.y = e.clientY;
+      var p = pt.matrixTransform(m.inverse());
+      return [p.x, p.y];
+    }
+    function pick(e) {
+      var p = toSvg(e);
+      if (!p) return null;
+      var best = null, bestD = 12;
+      for (var i = 0; i < items.length; i++) {
+        var it = items[i];
+        if (it.g.style.display === "none") continue;
+        var pts = it.pts;
+        for (var j = 0; j < pts.length - 1; j++) {
+          var d = distSeg(p[0], p[1], pts[j][0], pts[j][1], pts[j + 1][0], pts[j + 1][1]);
+          if (d < bestD) { bestD = d; best = it; }
+        }
+      }
+      return best;
+    }
+    function clearCurrent() {
+      if (current) { current.line.style.strokeWidth = ""; current = null; }
+      tip.style.display = "none";
+      svg.style.cursor = "";
+    }
+    var raf = null, lastE = null;
+    svg.addEventListener("mousemove", function (e) {
+      lastE = e;
+      if (raf) return;
+      raf = requestAnimationFrame(function () {
+        raf = null;
+        if (!lastE) return;
+        var it = pick(lastE);
+        if (it !== current) {
+          if (current) current.line.style.strokeWidth = "";
+          current = it;
+          if (current) {
+            current.line.style.strokeWidth = "4px";
+            tip.textContent = current.name;
+            tip.style.display = "block";
+            svg.style.cursor = "pointer";
+          } else {
+            tip.style.display = "none";
+            svg.style.cursor = "";
+          }
+        }
+        if (current) {
+          tip.style.left = Math.min(lastE.clientX + 14, window.innerWidth - 360) + "px";
+          tip.style.top = Math.min(lastE.clientY + 14, window.innerHeight - 60) + "px";
         }
       });
+    });
+    svg.addEventListener("mouseleave", clearCurrent);
+    svg.addEventListener("click", function (e) {
+      var it = pick(e);
+      if (it && it.legend) {
+        it.legend.scrollIntoView({ behavior: "smooth", block: "center" });
+        it.legend.classList.add("muse-flash");
+        setTimeout(function () { it.legend.classList.remove("muse-flash"); }, 1800);
+      }
     });
   });
 })();
