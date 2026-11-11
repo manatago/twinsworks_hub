@@ -153,7 +153,7 @@ def _research_sidebar() -> str:
             parts = head.split()
             when = " ".join(parts[1:3]) if len(parts) >= 3 else head
             upd = f'<span class="upd">最終更新：{html.escape(when)}</span>'
-        items.append(f'<a href="/research/{repo}/{entry}">{repo}</a>{upd}')
+        items.append(f'<a href="/research/view/{repo}/{entry}">{repo}</a>{upd}')
     return (
         '<div class="brand">twins works</div>'
         '<a href="/" class="active">共有タスク</a>'

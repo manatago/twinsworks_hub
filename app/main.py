@@ -128,6 +128,10 @@ class ResearchNavMiddleware:
         if scope["type"] != "http" or not scope.get("path", "").startswith("/research/"):
             await self.app(scope, receive, send)
             return
+        if b"embed=1" in (scope.get("query_string") or b""):
+            # ラッパーページの iframe 内表示ではバーを付けない（二重のナビ防止）
+            await self.app(scope, receive, send)
+            return
         start_msg = None
         body_parts = []
 
@@ -175,6 +179,65 @@ class ResearchNavMiddleware:
 
 
 app.add_middleware(ResearchNavMiddleware)
+
+
+# Research サマリーのラッパーページ。
+# コンソールのサイドバー付きの枠でサマリーを iframe 表示し、サマリー側の
+# ページ遷移でもサイドバーが残るようにする（静的配信の URL はそのまま）。
+import html as _html  # noqa: E402
+
+from fastapi import HTTPException as _HTTPException  # noqa: E402
+from fastapi.responses import HTMLResponse as _HTMLResponse  # noqa: E402
+
+from .dashboard import _research_sidebar as _sidebar_html  # noqa: E402
+
+_VIEW_PAGE = """<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Research サマリー | twins works</title>
+<style>
+  * {{ box-sizing:border-box; }}
+  body {{ margin:0; font-family:-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif; background:#f6f5f2; }}
+  .layout {{ display:flex; align-items:stretch; min-height:100vh; }}
+  .side {{ width:232px; flex:0 0 232px; background:#111827; color:#e5e7eb; padding:18px 14px; position:sticky; top:0; height:100vh; overflow-y:auto; }}
+  .side .brand {{ font-size:13px; font-weight:700; letter-spacing:.04em; color:#fff; margin:2px 6px 14px; }}
+  .side a {{ display:block; color:#e5e7eb; text-decoration:none; padding:8px 10px; border-radius:8px; font-size:13px; margin-bottom:2px; }}
+  .side a:hover {{ background:#1f2937; }}
+  .side a.active {{ background:#1f2937; color:#fff; font-weight:700; }}
+  .side .sec {{ font-size:11px; color:#9ca3af; margin:16px 6px 6px; letter-spacing:.05em; }}
+  .side .upd {{ display:block; font-size:11px; color:#9ca3af; padding:0 10px; margin:-2px 0 6px; }}
+  .side .foot {{ font-size:11px; color:#9ca3af; margin:18px 6px 0; line-height:1.6; }}
+  .content {{ flex:1; min-width:0; }}
+  iframe {{ display:block; width:100%; height:100vh; border:0; background:#fff; }}
+  @media (max-width:760px) {{ .layout {{ flex-direction:column; }} .side {{ width:auto; flex:none; height:auto; position:static; }} iframe {{ height:calc(100vh - 200px); }} }}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside class="side">{sidebar}</aside>
+<div class="content"><iframe src="{src}" title="Research サマリー"></iframe></div>
+</div>
+</body>
+</html>"""
+
+
+@app.get("/research/view/{repo}/{rest:path}", response_class=_HTMLResponse)
+def research_view(repo: str, rest: str):
+    entries = {"ResearchJanken": "latest.html", "ResearchLiveChat": "index.html"}
+    if repo not in entries:
+        raise _HTTPException(status_code=404)
+    entry = rest or entries[repo]
+    sidebar = _sidebar_html()
+    sidebar = sidebar.replace('<a href="/" class="active">', '<a href="/">', 1)
+    sidebar = sidebar.replace(
+        f'<a href="/research/view/{repo}/',
+        f'<a class="active" href="/research/view/{repo}/',
+        1,
+    )
+    src = _html.escape(f"/research/{repo}/{entry}?embed=1", quote=True)
+    return _VIEW_PAGE.format(sidebar=sidebar, src=src)
 
 
 # MCP はルートにマウントし、サブアプリ側のパス（/mcp）で受ける。
