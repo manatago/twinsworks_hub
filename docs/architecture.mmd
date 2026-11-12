@@ -1,31 +1,35 @@
 flowchart LR
     H["人間<br/>manatago / 新谷<br/>会議・進捗確認"]
-    A["AIエージェント<br/>Muse / Dots / manatago側<br/>エージェント別に範囲を絞ったキー"]
-    S["入口（SaaSは入口のみ）<br/>Slack / Gmail / Google Drive / Google Meet / Zoom<br/>Webhookは呼び鈴、正本はエージェントが取得"]
+    A["AIエージェント<br/>Muse（新谷側）/ manatago側エージェント<br/>エージェント別に範囲を絞ったキーで MCP 接続"]
+    S["入口（SaaSは入口のみ）<br/>Slack / Gmail / Google Drive / Google Meet / Zoom<br/>Webhookは呼び鈴、取得・データ作成は基盤（VPS）側"]
 
-    subgraph VPS["manatago VPS（さくら）― Docker Compose / manatagoのテールネット"]
-        TS["Tailscale Serve（*.ts.net HTTPS）<br/>テールネット内のみ公開"]
+    subgraph VPS["manatago VPS（XServer）「xvps」― Docker Compose / manatagoのテールネット（新谷側へデバイス共有）"]
+        TS["Tailscale Serve（https://xvps.tail90c25f.ts.net）<br/>テールネット内のみ公開"]
         subgraph APP["アプリ（同一アプリの別フェース）"]
             MCP["MCPサーバー<br/>エージェント向け主窓口"]
-            WEB["Webダッシュボード<br/>共有タスクのみ表示"]
-            ING["取り込み処理<br/>Webhook主＋定期取得は安全網"]
+            WEB["Webダッシュボード<br/>共有タスク＋Researchサマリー表示"]
+            ING["取り込み処理（計画）<br/>Webhook主＋定期取得は安全網<br/>議事録のタスク化・朝の速報"]
         end
         SVC["サービス層<br/>業務ロジック＋権限チェックをAPI側で強制"]
         DB[("Postgres（Dockerボリューム）<br/>identities / tasks / documents<br/>取り込み済みデータ・キュー")]
+        RS["Researchクローン<br/>ResearchJanken / ResearchLiveChat<br/>毎時 pull して静的配信"]
         TS --> MCP
         TS --> WEB
         ING --> SVC
         MCP --> SVC
         WEB --> SVC
+        WEB --> RS
         SVC --> DB
     end
 
     GH["GitHub: manatago/twinsworks_hub<br/>定義・仕様・実装の正本"]
+    GR["GitHub: Research* リポジトリ<br/>サマリーの元データ（作成は Mac mini M2）"]
     SEC["VPS側に置くもの<br/>.env・秘密情報 / DBバックアップ<br/>Gitには雛形のみ"]
     P["個人側（対象外）<br/>ProjectTitan / 個人コア（Mac mini M2）<br/>個人データは共有DBに入れない"]
 
     H --> TS
     A --> TS
     S --> ING
-    GH -->|clone / デプロイ| VPS
+    GH -->|pull / デプロイ| VPS
+    GR -->|毎時 pull（専用SSH鍵）| RS
     P -.->|共有化は昇格: 正本を共有DBへ、個人側にはリンク| DB

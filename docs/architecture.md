@@ -12,8 +12,9 @@ MCP とダッシュボードは同一アプリの別フェースでよい。
 
 ## 配置と公開範囲
 
-- 配置先: manatago の VPS（さくらインターネット）
-- 公開範囲: テールネット内のみ。Tailscale Serve で `*.ts.net` の HTTPS 名で出す（ドメイン購入は不要）
+- 配置先: manatago の VPS（XServer）「xvps」。Ubuntu 26.04 LTS 上で Docker Compose により稼働中（2026-11-09 構築）
+- テールネット: VPS は manatago のテールネット所属。新谷側のテールネットへはデバイス共有でのみ見せる
+- 公開範囲: テールネット内のみ。Tailscale Serve で https://xvps.tail90c25f.ts.net として出す（ドメイン購入は不要）
 - 公開 HTTPS が要るのは Webhook 受け口を使う場合のみで、その場合も受け口だけに限定する
 - Postgres のポートは公開しない
 
@@ -30,3 +31,10 @@ MCP とダッシュボードは同一アプリの別フェースでよい。
 - 状態・実データ: デプロイ先の DB（Docker ボリューム）
 - 各 SaaS（Slack、メール、Drive など）は入口としてのみ使い、保持は基盤側で行う
 - 取り込みはイベント駆動（Webhook）を主とし、定期取得を安全網とする
+
+## 現行の稼働状況（2026-11-12 時点）
+
+稼働中: MCP サーバー（12ツール）、Web ダッシュボード、サービス層、Postgres。エージェント接続は両オーナー分とも完了（新谷側 Muse、manatago 側エージェント）。
+ダッシュボードのサイドバーから Research サマリー（ResearchJanken / ResearchLiveChat）も配信している。元データは Mac mini（M2）で作成し GitHub の Research* リポジトリに置く。xvps 上にクローンを置き、manatago の GitHub 認証（専用 SSH 鍵）で毎時 pull する。
+未実装: 取り込み処理（議事録の取得・タスク化、朝の速報ワーカー）。担い手の配分は決定待ちで、決まり次第この文書と構成図に反映する。
+同じ XServer VPS 上には Git LFS サーバー（rudolfs）も同居するが、これは基盤本体とは別のサービスとして扱う。
