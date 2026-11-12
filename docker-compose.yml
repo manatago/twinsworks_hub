@@ -32,5 +32,17 @@ services:
       # アプリは reports/collect_dashboards/ の配信と pull_status.json の参照だけに使う。
       - /home/sin/research:/research:ro
 
+  worker:
+    build: .
+    # 基盤側ワーカー（フィード取得→登録）。アプリとは別プロセスで常駐する。
+    command: python -m workers.runner
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      WORKER_INTERVAL_SEC: ${WORKER_INTERVAL_SEC:-3600}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   pgdata:
