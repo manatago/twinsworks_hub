@@ -120,8 +120,8 @@ def documents_list(source: str | None = None, kind: str | None = None,
 
 @mcp.tool(name="documents.get")
 def documents_get(document_id: str) -> dict:
-    """文書1件のメタ情報と locator を返す。原文そのものは返さない。
-    （要 documents:read）"""
+    """文書1件のメタ情報と locator、本文（body、基盤内で生成した文書
+    のみ）を返す。（要 documents:read）"""
     return services.documents_get(document_id)
 
 
@@ -129,13 +129,16 @@ def documents_get(document_id: str) -> dict:
 def documents_ingest(title: str, locator: str, kind: str | None = None,
                      source: str | None = None,
                      external_id: str | None = None,
-                     task_id: str | None = None) -> dict:
-    """取り込み文書を登録する。原文ファイルは呼び出し側が VPS 上へ
-    配置しておくこと。source + external_id で重複排除する（既存があれば
-    それを返し、created=false になる）。（要 ingestion:write）"""
+                     task_id: str | None = None,
+                     body: str | None = None) -> dict:
+    """文書を登録する。取り込み文書は原文ファイルを VPS 上へ配置し、
+    locator で参照する。基盤内で生成した文書（朝の速報など）は body に
+    本文を渡して DB に保存する。source + external_id で重複排除する
+    （既存があればそれを返し、created=false になる）。
+    （要 ingestion:write）"""
     return services.documents_ingest(
         title=title, locator=locator, kind=kind, source=source,
-        external_id=external_id, task_id=task_id,
+        external_id=external_id, task_id=task_id, body=body,
     )
 
 

@@ -262,7 +262,7 @@ def documents_get(document_id: str) -> dict:
     with db.connect() as conn:
         doc = _row(
             conn,
-            f"SELECT {_DOCUMENT_COLUMNS} FROM documents WHERE id = %s",
+            f"SELECT {_DOCUMENT_COLUMNS}, body FROM documents WHERE id = %s",
             (document_id,),
         )
         if doc is None:
@@ -273,8 +273,13 @@ def documents_get(document_id: str) -> dict:
 def documents_ingest(title: str, locator: str, kind: str | None = None,
                      source: str | None = None,
                      external_id: str | None = None,
-                     task_id: str | None = None) -> dict:
-    """取り込み文書の登録。原文は呼び出し側が VPS 上へ配置済みの前提。
+                     task_id: str | None = None,
+                     body: str | None = None) -> dict:
+    """文書の登録。
+
+    取り込む文書は原文ファイルを呼び出し側が VPS 上へ配置済みの前提で、
+    locator だけを登録する。基盤の工程が生成する文書（朝の速報など）は
+    body に本文を渡して DB に保存する（locator は参照名でよい）。
 
     source + external_id が既にあれば既存を返し、重複登録しない。
     """
@@ -294,9 +299,9 @@ def documents_ingest(title: str, locator: str, kind: str | None = None,
             doc = _row(
                 conn,
                 "INSERT INTO documents (title, kind, locator, source,"
-                " external_id) VALUES (%s, %s, %s, %s, %s)"
+                " external_id, body) VALUES (%s, %s, %s, %s, %s, %s)"
                 f" RETURNING {_DOCUMENT_COLUMNS}",
-                (title, kind, locator, source, external_id),
+                (title, kind, locator, source, external_id, body),
             )
         if task_id:
             conn.execute(
