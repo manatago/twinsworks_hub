@@ -17,15 +17,15 @@
 | identities.resolve | handle（Slack ID・メール等）から identity を引く | identities:read |
 | identities.create | 身元＋handles の登録 | identities:write |
 | documents.list | 共有文書一覧（source・kind で絞り込み） | documents:read |
-| documents.get | 1件のメタ情報＋locator | documents:read |
-| documents.ingest | 取り込み文書の登録（source＋external_id で重複排除） | ingestion:write |
+| documents.get | 1件のメタ情報＋locator＋本文（基盤内で生成した文書のみ） | documents:read |
+| documents.ingest | 文書の登録（source＋external_id で重複排除。本文を渡すと DB に保存） | ingestion:write |
 | ingestion.record_checkpoint | 定期取得の最終位置を記録 | ingestion:write |
 
 ## 文書の置き方
 
-- 原文は DB に入れない。原文ファイルは VPS 上に置き、DB の `documents.locator` がその場所を指す。
-- `documents.get` が返すのはメタ情報と locator で、原文そのものは返さない。
+- 取り込む文書の原文は DB に入れない。原文ファイルは VPS 上に置き、DB の `documents.locator` がその場所を指す。
 - `documents.ingest` の前に、呼び出し側（エージェント）が原文ファイルを VPS 上へ配置しておく。
+- 基盤の工程が生成する文書（朝の速報など）は例外で、本文を `documents.ingest` の body に渡して DB に保存する。`documents.get` はその本文を返す。一覧（documents.list）には本文を含めない。
 
 ## v1 に入れないもの
 
