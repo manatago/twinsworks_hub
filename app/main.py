@@ -78,7 +78,7 @@ def health():
     return {"status": "ok", "db": db_ok()}
 
 
-# ダッシュボード（人間用・読み取り専用）が / を担う
+# ダッシュボード（人間用）が / を担う
 from .dashboard import router as dashboard_router  # noqa: E402
 
 app.include_router(dashboard_router)

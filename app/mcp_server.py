@@ -1,6 +1,6 @@
 """MCP サーバー（エージェント向けの主窓口）。
 
-ツールは docs/mcp-tools.md の12個。実処理はサービス層（app.services）に委譲し、
+ツールは docs/mcp-tools.md の14個。実処理はサービス層（app.services）に委譲し、
 権限チェックはサービス層で強制する。
 """
 
@@ -55,6 +55,32 @@ def tasks_create(title: str, description: str | None = None,
         owner_identity_id=owner_identity_id, due_at=due_at, source=source,
         project=project, priority=priority,
     )
+
+
+@mcp.tool(name="tasks.update")
+def tasks_update(task_id: str, title: str | None = None,
+                 description: str | None = None,
+                 owner_identity_id: str | None = None,
+                 due_at: str | None = None,
+                 project: str | None = None,
+                 priority: str | None = None) -> dict:
+    """タスクの項目を修正する。渡した項目だけが変わる。
+    due_at / owner_identity_id / project は空文字列で未設定に戻す。
+    状態の変更は tasks.update_status を使う。（要 tasks:write）"""
+    return services.tasks_update(
+        task_id, title=title, description=description,
+        owner_identity_id=owner_identity_id, due_at=due_at,
+        project=project, priority=priority,
+    )
+
+
+@mcp.tool(name="tasks.merge")
+def tasks_merge(source_task_id: str, target_task_id: str) -> dict:
+    """source タスクを target タスクへ統合する。source の説明は target の
+    説明末尾に「統合された内訳」として残り、紐付く documents は target へ
+    付け替わる。source は archived になる（done にはならない）。
+    （要 tasks:write）"""
+    return services.tasks_merge(source_task_id, target_task_id)
 
 
 @mcp.tool(name="tasks.update_status")

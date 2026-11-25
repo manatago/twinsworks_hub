@@ -139,6 +139,148 @@ def tasks_promote(promoted_from: str, title: str,
     return db.to_jsonable(task)
 
 
+def _ledger_number(conn, task_id: str) -> int | None:
+    """台帳番号（created_at 順、id でタイブレーク）を返す。"""
+    row = _row(
+        conn,
+        "SELECT n FROM (SELECT id, ROW_NUMBER() OVER"
+        " (ORDER BY created_at ASC, id ASC) AS n FROM tasks) ranked"
+        " WHERE id = %s",
+        (task_id,),
+    )
+    return int(row["n"]) if row else None
+
+
+def tasks_update(task_id: str, title: str | None = None,
+                 description: str | None = None,
+                 owner_identity_id: str | None = None,
+                 due_at: str | None = None,
+                 project: str | None = None,
+                 priority: str | None = None) -> dict:
+    """タスクの項目を部分的に修正する。
+
+    None の項目は変更しない。due_at / owner_identity_id / project は
+    空文字列を渡すと未設定（NULL）に戻す。状態の遷移は
+    tasks_update_status を使うこと（ここでは扱わない）。
+    """
+    auth.require_scope("tasks:write")
+    _validate_task_fields(priority)
+    if title is not None and not title.strip():
+        raise ValueError("title must not be empty")
+    sets, params = [], []
+    if title is not None:
+        sets.append("title = %s")
+        params.append(title)
+    if description is not None:
+        sets.append("description = %s")
+        params.append(description or None)
+    if owner_identity_id is not None:
+        sets.append("owner_identity_id = %s")
+        params.append(owner_identity_id or None)
+    if due_at is not None:
+        sets.append("due_at = %s")
+        params.append(due_at or None)
+    if project is not None:
+        sets.append("project = %s")
+        params.append(project or None)
+    if priority is not None:
+        sets.append("priority = %s")
+        params.append(priority)
+    if not sets:
+        raise ValueError("nothing to update")
+    sets.append("updated_at = now()")
+    with db.connect() as conn:
+        task = _row(
+            conn,
+            f"UPDATE tasks SET {', '.join(sets)}"
+            f" WHERE id = %s RETURNING {_TASK_COLUMNS}",
+            (*params, task_id),
+        )
+        if task is None:
+            raise ValueError(f"task not found: {task_id}")
+    return db.to_jsonable(task)
+
+
+def tasks_merge(source_task_id: str, target_task_id: str) -> dict:
+    """source タスクを target タスクへ統合する（2026-11-21 の手作業の定型化）。
+
+    - target の説明末尾に、source の台帳番号・タイトル・説明を
+      「統合された内訳」として追記する。
+    - source に紐付く documents は target へ付け替える。
+    - source は archived にし、説明末尾へ統合先の注記を残す
+      （done にはしない。統合は完了ではないため）。
+    戻り値は target（documents 付き）と source の要約。
+    """
+    auth.require_scope("tasks:write")
+    if source_task_id == target_task_id:
+        raise ValueError("cannot merge a task into itself")
+    with db.connect() as conn:
+        source = _row(
+            conn, f"SELECT {_TASK_COLUMNS} FROM tasks WHERE id = %s",
+            (source_task_id,),
+        )
+        if source is None:
+            raise ValueError(f"task not found: {source_task_id}")
+        target = _row(
+            conn, f"SELECT {_TASK_COLUMNS} FROM tasks WHERE id = %s",
+            (target_task_id,),
+        )
+        if target is None:
+            raise ValueError(f"task not found: {target_task_id}")
+        if source["status"] == "archived":
+            raise ValueError("source task is already archived")
+        source_no = _ledger_number(conn, source_task_id)
+        target_no = _ledger_number(conn, target_task_id)
+
+        breakdown = (
+            f"\n\n【統合された内訳】#{source_no} {source['title']}"
+        )
+        if source.get("description"):
+            breakdown += f"\n{source['description']}"
+        new_target_desc = (target.get("description") or "") + breakdown
+        conn.execute(
+            "UPDATE tasks SET description = %s, updated_at = now()"
+            " WHERE id = %s",
+            (new_target_desc, target_task_id),
+        )
+        conn.execute(
+            "INSERT INTO task_documents (task_id, document_id)"
+            " SELECT %s, document_id FROM task_documents WHERE task_id = %s"
+            " ON CONFLICT DO NOTHING",
+            (target_task_id, source_task_id),
+        )
+        conn.execute(
+            "DELETE FROM task_documents WHERE task_id = %s",
+            (source_task_id,),
+        )
+        note = (
+            f"\n\n【統合済み】#{target_no}「{target['title']}」へ統合されたため"
+            "アーカイブ（完了ではない）。"
+        )
+        new_source_desc = (source.get("description") or "") + note
+        merged_source = _row(
+            conn,
+            "UPDATE tasks SET status = 'archived', description = %s,"
+            " updated_at = now()"
+            f" WHERE id = %s RETURNING {_TASK_COLUMNS}",
+            (new_source_desc, source_task_id),
+        )
+        docs = _rows(
+            conn,
+            f"SELECT {_DOCUMENT_COLUMNS} FROM documents d"
+            " JOIN task_documents td ON td.document_id = d.id"
+            " WHERE td.task_id = %s ORDER BY d.created_at ASC",
+            (target_task_id,),
+        )
+        target = _row(
+            conn, f"SELECT {_TASK_COLUMNS} FROM tasks WHERE id = %s",
+            (target_task_id,),
+        )
+    target = db.to_jsonable(target)
+    target["documents"] = db.to_jsonable(docs)
+    return {"target": target, "source": db.to_jsonable(merged_source)}
+
+
 def tasks_update_status(task_id: str, status: str) -> dict:
     auth.require_scope("tasks:write")
     if status not in TASK_STATUSES:

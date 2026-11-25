@@ -1,4 +1,4 @@
-# MCP ツール一覧（v1）
+# MCP ツール一覧
 
 エージェント向けの主窓口は MCP。公開 REST API は作らない。
 各ツールは API キーのスコープで制御し、権限チェックはサービス層（API 側）で強制する。
@@ -12,6 +12,8 @@
 | tasks.get | 1件＋紐付く documents | tasks:read |
 | tasks.create | 共有タスク作成（project を指定） | tasks:write |
 | tasks.update_status | open / in_progress / done / archived の遷移 | tasks:write |
+| tasks.update | タイトル・説明・担当・期限・プロジェクト・優先度の修正（渡した項目だけ変更。due_at / owner / project は空文字列で未設定に戻す） | tasks:write |
+| tasks.merge | source を target へ統合（説明は「統合された内訳」として target に残り、documents は付け替え、source は archived になる。done にはしない） | tasks:write |
 | tasks.promote | 個人側の参照を受け取り、共有側に正本を作る（個人側にリンクだけ残す処理は呼び出し側で行う） | tasks:write |
 | identities.list | 身元一覧（handles を含む） | identities:read |
 | identities.resolve | handle（Slack ID・メール等）から identity を引く | identities:read |
@@ -27,9 +29,15 @@
 - `documents.ingest` の前に、呼び出し側（エージェント）が原文ファイルを VPS 上へ配置しておく。
 - 基盤の工程が生成する文書（朝の速報など）は例外で、本文を `documents.ingest` の body に渡して DB に保存する。`documents.get` はその本文を返す。一覧（documents.list）には本文を含めない。
 
-## v1 に入れないもの
+## ダッシュボードからの書き込み（2026-11-25 追加）
+
+ダッシュボードからも状態変更・編集・統合ができる。いずれもサービス層を
+経由し、ダッシュボードは書き込み時にだけ tasks:write を加えた合成
+エージェントとして呼ぶ（権限チェックはサービス層で強制される）。
+公開は Tailscale Serve（テールネット内）のみ。
+
+## 入れないもの
 
 - 文書の物理削除（共有文書は無期限保持・追記のみ。誤りは訂正文書で対応する）
-- ダッシュボードからの書き込み
 - 管理者キーの発行（Admin の手作業とする）
 - 公開 REST API

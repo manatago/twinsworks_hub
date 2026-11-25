@@ -1,12 +1,12 @@
-"""人間用ダッシュボード（読み取り専用）。
+"""人間用ダッシュボード。
 
-v1 ではダッシュボードからの書き込みは行わない（docs/mcp-tools.md）。
-表示はサービス層経由で行い、ダッシュボード内部では読み取り専用スコープの
-合成エージェントとしてサービス層を呼ぶ。書き込みスコープは持たない。
-公開は Tailscale Serve（テールネット内）のみ。
+表示・操作ともサービス層経由で行い、ダッシュボード内部では合成
+エージェントとしてサービス層を呼ぶ。読み取りには読み取りスコープのみ、
+書き込み（状態変更・編集・統合）のときだけ tasks:write を加えた
+スコープで呼ぶ。公開は Tailscale Serve（テールネット内）のみで、
+画面の操作はテールネット内の人間が行う前提。
 
 デザインは試作モック（docs/shared-tasks.html）の見た目に合わせる。
-モック側の追加フォームや操作ボタンは v1 の対象外なので持ち込まない。
 
 一覧は「未完了」「完了」の2タブに分ける（2026-11-10 決定）。
 各タスクはどちらか一方のタブにだけ出る（重複表示はしない）。
@@ -18,13 +18,14 @@ import os
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Form
+from fastapi.responses import HTMLResponse, RedirectResponse
 
 from . import auth, services
 
 JST = timezone(timedelta(hours=9))
 READ_SCOPES = ["tasks:read", "identities:read", "documents:read"]
+WRITE_SCOPES = READ_SCOPES + ["tasks:write"]
 
 router = APIRouter()
 
@@ -42,6 +43,17 @@ PRIORITY_LABELS = {"high": "高", "normal": "普通", "low": "低"}
 @contextmanager
 def _readonly():
     token = auth.set_current_agent({"name": "dashboard", "scopes": READ_SCOPES})
+    try:
+        yield
+    finally:
+        auth.reset_current_agent(token)
+
+
+@contextmanager
+def _writeable():
+    token = auth.set_current_agent(
+        {"name": "dashboard", "scopes": WRITE_SCOPES}
+    )
     try:
         yield
     finally:
@@ -99,7 +111,79 @@ def _due_label(task: dict, today) -> str:
     return f"期限 {text}"
 
 
-def _task_html(task: dict, number: int, owners: dict, today) -> str:
+def _ops_html(task: dict, number: int, identities: list, all_tasks: list,
+              numbers: dict, tab: str) -> str:
+    """タスクカード下部の操作フォーム（状態変更・編集・統合）。"""
+    tid = task["id"]
+    status_opts = "".join(
+        f'<option value="{s}"{" selected" if s == task["status"] else ""}>'
+        f"{STATUS_LABELS[s]}</option>"
+        for s in STATUS_LABELS
+    )
+    owner_opts = '<option value="">未定</option>' + "".join(
+        f'<option value="{html.escape(i["id"], quote=True)}"'
+        f'{" selected" if i["id"] == task.get("owner_identity_id") else ""}>'
+        f"{html.escape(i['name'])}</option>"
+        for i in identities
+    )
+    due = _parse_dt(task.get("due_at"))
+    due_val = due.astimezone(JST).date().isoformat() if due else ""
+    prio_opts = "".join(
+        f'<option value="{p}"'
+        f'{" selected" if p == (task.get("priority") or "normal") else ""}>'
+        f"{PRIORITY_LABELS[p]}</option>"
+        for p in PRIORITY_LABELS
+    )
+    merge_targets = [
+        t for t in all_tasks
+        if t["id"] != tid and t["status"] != "archived"
+    ]
+    merge_html = ""
+    if merge_targets and task["status"] != "archived":
+        target_opts = "".join(
+            f'<option value="{html.escape(t["id"], quote=True)}">'
+            f'#{numbers[t["id"]]} {html.escape(t["title"])}</option>'
+            for t in merge_targets
+        )
+        merge_html = (
+            f'<form class="op" method="post" action="/tasks/{tid}/merge"'
+            ' onsubmit="return confirm('
+            "'このタスクを統合先へ統合し、アーカイブします。よろしいですか？'"
+            ')">'
+            f'<input type="hidden" name="tab" value="{tab}">'
+            f'<label>統合先 <select name="target_id">{target_opts}</select>'
+            "</label>"
+            '<button type="submit">統合する</button></form>'
+        )
+    return (
+        '<div class="ops">'
+        f'<form class="op" method="post" action="/tasks/{tid}/status">'
+        f'<input type="hidden" name="tab" value="{tab}">'
+        f'<label>状態 <select name="status">{status_opts}</select></label>'
+        '<button type="submit">変更</button></form>'
+        "<details><summary>編集</summary>"
+        f'<form class="edit" method="post" action="/tasks/{tid}/edit">'
+        f'<input type="hidden" name="tab" value="{tab}">'
+        f'<label>タイトル <input type="text" name="title" required'
+        f' value="{html.escape(task["title"], quote=True)}"></label>'
+        f'<label>説明 <textarea name="description" rows="5">'
+        f'{html.escape(task.get("description") or "")}</textarea></label>'
+        f'<label>担当 <select name="owner_identity_id">{owner_opts}</select>'
+        "</label>"
+        f'<label>期限 <input type="date" name="due_at" value="{due_val}">'
+        "</label>"
+        f'<label>プロジェクト <input type="text" name="project"'
+        f' value="{html.escape(task.get("project") or "", quote=True)}">'
+        "</label>"
+        f'<label>優先度 <select name="priority">{prio_opts}</select></label>'
+        '<button type="submit">保存</button></form></details>'
+        f"{merge_html}</div>"
+    )
+
+
+def _task_html(task: dict, number: int, owners: dict, today,
+               identities: list, all_tasks: list, numbers: dict,
+               tab: str) -> str:
     status = task["status"]
     badge = (
         f'<span class="badge st-{status}">'
@@ -121,7 +205,9 @@ def _task_html(task: dict, number: int, owners: dict, today) -> str:
         f"<span>由来：{source}</span>"
         f"<span>プロジェクト：{project}</span>"
         f"<span>優先度：{priority}</span></div>"
-        f"{desc_html}</div>"
+        f"{desc_html}"
+        f"{_ops_html(task, number, identities, all_tasks, numbers, tab)}"
+        "</div>"
     )
 
 
@@ -224,6 +310,20 @@ _PAGE = """<!DOCTYPE html>
   .due-soon {{ color:var(--prog); font-weight:700; }}
   .note {{ font-size:12px; color:var(--muted); line-height:1.7; }}
   .empty {{ color:var(--muted); font-size:13px; padding:12px 0; }}
+  .ops {{ margin-top:10px; border-top:1px dashed var(--line); padding-top:10px;
+    display:flex; flex-direction:column; gap:8px; }}
+  .ops .op {{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:13px; }}
+  .ops label {{ display:flex; gap:6px; align-items:center; }}
+  .ops select, .ops input[type="text"], .ops input[type="date"] {{ padding:6px 8px;
+    border:1px solid #d1d5db; border-radius:8px; font-size:13px; background:#fff; }}
+  .ops button {{ padding:6px 12px; font-size:13px; background:#f3f4f6;
+    border:1px solid var(--line); color:var(--ink); }}
+  .ops details summary {{ cursor:pointer; font-size:13px; color:var(--muted); }}
+  .ops form.edit {{ display:flex; flex-direction:column; gap:8px; margin-top:8px; }}
+  .ops form.edit label {{ align-items:flex-start; flex-direction:column; gap:4px; font-size:13px; }}
+  .ops form.edit input[type="text"], .ops form.edit textarea {{ width:100%; }}
+  .ops textarea {{ padding:8px; border:1px solid #d1d5db; border-radius:8px;
+    font-size:13px; font-family:inherit; }}
 </style>
 </head>
 <body>
@@ -232,7 +332,7 @@ _PAGE = """<!DOCTYPE html>
 <div class="content">
 <header>
   <h1>twins works 共有タスク管理 <span style="font-weight:400;font-size:13px;">— manatagoとの共同事業</span></h1>
-  <p>共通基盤で管理する共有タスクだけを表示します。この画面は読み取り専用です。タスクの登録・変更はエージェント（MCP）経由で行います。</p>
+  <p>共通基盤で管理する共有タスクだけを表示します。各タスクの状態変更・編集・統合はこの画面からも、エージェント（MCP）経由でも行えます。</p>
 </header>
 <main>
   <div class="counts">{counts}</div>
@@ -337,7 +437,11 @@ def dashboard(tab: str | None = None, status: str | None = None,
 
     if tasks:
         tasks_html = "\n".join(
-            _task_html(t, numbers[t["id"]], owners, today) for t in tasks
+            _task_html(
+                t, numbers[t["id"]], owners, today,
+                identities, all_tasks, numbers, tab,
+            )
+            for t in tasks
         )
     else:
         tasks_html = '<p class="empty">条件に合うタスクがありません。</p>'
@@ -355,3 +459,63 @@ def dashboard(tab: str | None = None, status: str | None = None,
         ),
         tasks_html=tasks_html,
     )
+
+
+# ------------------------------------------------------------- 書き込み操作
+
+
+def _back(tab: str | None) -> RedirectResponse:
+    target = "/?tab=done" if tab == "done" else "/?tab=active"
+    return RedirectResponse(target, status_code=303)
+
+
+def _error(message: str) -> HTMLResponse:
+    return HTMLResponse(
+        "<!DOCTYPE html><html lang=\"ja\"><head><meta charset=\"utf-8\">"
+        f"<title>エラー</title></head><body><p>{html.escape(message)}</p>"
+        '<p><a href="/">タスク一覧へ戻る</a></p></body></html>',
+        status_code=400,
+    )
+
+
+@router.post("/tasks/{task_id}/status")
+def task_status(task_id: str, status: str = Form(...),
+                tab: str = Form("active")):
+    try:
+        with _writeable():
+            services.tasks_update_status(task_id, status)
+    except ValueError as e:
+        return _error(str(e))
+    return _back(tab)
+
+
+@router.post("/tasks/{task_id}/edit")
+def task_edit(task_id: str, title: str = Form(...),
+              description: str = Form(""),
+              owner_identity_id: str = Form(""),
+              due_at: str = Form(""),
+              project: str = Form(""),
+              priority: str = Form("normal"),
+              tab: str = Form("active")):
+    due = f"{due_at}T00:00:00+09:00" if due_at else ""
+    try:
+        with _writeable():
+            services.tasks_update(
+                task_id, title=title, description=description,
+                owner_identity_id=owner_identity_id, due_at=due,
+                project=project, priority=priority,
+            )
+    except ValueError as e:
+        return _error(str(e))
+    return _back(tab)
+
+
+@router.post("/tasks/{task_id}/merge")
+def task_merge(task_id: str, target_id: str = Form(...),
+               tab: str = Form("active")):
+    try:
+        with _writeable():
+            services.tasks_merge(task_id, target_id)
+    except ValueError as e:
+        return _error(str(e))
+    return _back(tab)
