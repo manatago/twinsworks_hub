@@ -12,7 +12,7 @@
 
 - 担当順: (1) 新谷の Muse、(2) Dots、(3) manatago の Muse。目安として 06:50 頃までに終える。
 - 実行前に MCP の documents.list（source = "morning_digest"）で当日の external_id（日付、YYYY-MM-DD）があるか確認し、あれば作成しない（他の担当が作成済み）。
-- 入力は documents.list で直近24時間に登録された記事を source 別に取得する（limit を調整し、新しいものから読む）。媒体は workers/watchlist.json が正本で、取得状況は ingestion のチェックポイントで確認できる。
+- 入力は documents.list で直近24時間に登録された記事を source 別に取得する。取得時は since に24時間前の日時を渡し、order = "desc"（新しい順）で読むこと。since を付けない既定の並び（古い順＋上限）では、蓄積の多い source（arXiv 等）の新着が埋もれて取れない。
 - 選定: 重要3件を主導に置く。判断軸は、影響範囲の広さ、当事者性（自分たちが使う技術・サービスに関係するか）、新規性（既知の話題の続報かどうか）。残りは AI とセキュリティに分類し、注目項目だけを添える。前日の速報と重複する話題は、続報でない限り入れない。
 - 形式: 全体で5分程度で読める分量。各項目に短い要約と出典リンク（記事の locator）を付ける。見出し構成は「今日の3件 / セキュリティ、その他 / AI、その他」。
 - 保存: documents.ingest で登録する。source = "morning_digest"、external_id = 日付、kind = "digest"、title = "朝の速報 YYYY-MM-DD"、locator = "morning_digest"、body = 本文。

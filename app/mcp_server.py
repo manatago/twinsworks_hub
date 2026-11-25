@@ -139,9 +139,16 @@ def identities_create(kind: str, name: str, email: str | None = None,
 
 @mcp.tool(name="documents.list")
 def documents_list(source: str | None = None, kind: str | None = None,
-                   limit: int = 100) -> list[dict]:
-    """共有文書一覧。source・kind で絞り込みできる。（要 documents:read）"""
-    return services.documents_list(source=source, kind=kind, limit=limit)
+                   limit: int = 100, since: str | None = None,
+                   order: str = "asc") -> list[dict]:
+    """共有文書一覧。source・kind で絞り込みできる。since（ISO日時）を
+    渡すと登録がそれ以降のものだけを返す。order="desc" で新しい順。
+    蓄積が多い source の新着確認には since と desc を使うこと
+    （既定の asc は古い方から limit 件で、新着が埋もれる）。
+    （要 documents:read）"""
+    return services.documents_list(
+        source=source, kind=kind, limit=limit, since=since, order=order,
+    )
 
 
 @mcp.tool(name="documents.get")

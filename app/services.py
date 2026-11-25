@@ -378,8 +378,11 @@ def identities_create(kind: str, name: str, email: str | None = None,
 
 
 def documents_list(source: str | None = None, kind: str | None = None,
-                   limit: int = 100) -> list[dict]:
+                   limit: int = 100, since: str | None = None,
+                   order: str = "asc") -> list[dict]:
     auth.require_scope("documents:read")
+    if order not in ("asc", "desc"):
+        raise ValueError(f"invalid order: {order}")
     clauses, params = [], []
     if source:
         clauses.append("source = %s")
@@ -387,13 +390,16 @@ def documents_list(source: str | None = None, kind: str | None = None,
     if kind:
         clauses.append("kind = %s")
         params.append(kind)
+    if since:
+        clauses.append("created_at >= %s")
+        params.append(since)
     where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
     limit = max(1, min(int(limit), 500))
     with db.connect() as conn:
         rows = _rows(
             conn,
             f"SELECT {_DOCUMENT_COLUMNS} FROM documents{where}"
-            " ORDER BY created_at ASC LIMIT %s",
+            f" ORDER BY created_at {order.upper()} LIMIT %s",
             (*params, limit),
         )
     return db.to_jsonable(rows)

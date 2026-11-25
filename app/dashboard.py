@@ -247,6 +247,7 @@ def _research_sidebar() -> str:
     return (
         '<div class="brand">twins works</div>'
         '<a href="/" class="active">共有タスク</a>'
+        '<a href="/digest">朝の速報</a>'
         '<div class="sec">Research サマリー</div>'
         + "".join(items)
         + '<p class="foot">サマリーは xvps 上の clone から配信しています（毎時自動 Pull）。</p>'
@@ -458,6 +459,111 @@ def dashboard(tab: str | None = None, status: str | None = None,
             project or "",
         ),
         tasks_html=tasks_html,
+    )
+
+
+# ------------------------------------------------------------- 朝の速報
+
+
+def _digest_body_html(body: str) -> str:
+    """速報本文（プレーンテキスト）を表示用 HTML にする。URL はリンク化。"""
+    import re
+
+    text = html.escape(body or "")
+    text = re.sub(
+        r"(https?://[^\s<]+)",
+        r'<a href="\1" target="_blank" rel="noopener">\1</a>',
+        text,
+    )
+    return text.replace("\n", "<br>\n")
+
+
+_DIGEST_PAGE = """<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>朝の速報 | twins works</title>
+<style>
+  * {{ box-sizing:border-box; }}
+  body {{ margin:0; font-family:-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+    background:#f6f5f2; color:#1f2937; }}
+  .layout {{ display:flex; align-items:stretch; min-height:100vh; }}
+  .side {{ width:232px; flex:0 0 232px; background:#111827; color:#e5e7eb; padding:18px 14px; position:sticky; top:0; height:100vh; overflow-y:auto; }}
+  .side .brand {{ font-size:13px; font-weight:700; letter-spacing:.04em; color:#fff; margin:2px 6px 14px; }}
+  .side a {{ display:block; color:#e5e7eb; text-decoration:none; padding:8px 10px; border-radius:8px; font-size:13px; margin-bottom:2px; }}
+  .side a:hover {{ background:#1f2937; }}
+  .side a.active {{ background:#1f2937; color:#fff; font-weight:700; }}
+  .side .sec {{ font-size:11px; color:#9ca3af; margin:16px 6px 6px; letter-spacing:.05em; }}
+  .side .upd {{ display:block; font-size:11px; color:#9ca3af; padding:0 10px; margin:-2px 0 6px; }}
+  .side .foot {{ font-size:11px; color:#9ca3af; margin:18px 6px 0; line-height:1.6; }}
+  .content {{ flex:1; min-width:0; }}
+  @media (max-width:760px) {{ .layout {{ flex-direction:column; }} .side {{ width:auto; flex:none; height:auto; position:static; }} }}
+  header {{ background:#111827; color:#fff; padding:18px 24px; }}
+  header h1 {{ margin:0; font-size:20px; }}
+  main {{ max-width:860px; margin:0 auto; padding:20px 16px 60px; }}
+  .card {{ background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:18px; }}
+  .dates {{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }}
+  .dates a {{ padding:6px 12px; border:1px solid #e5e7eb; border-radius:999px;
+    background:#f3f4f6; color:#1f2937; text-decoration:none; font-size:13px; }}
+  .dates a.active {{ background:#111827; color:#fff; border-color:#111827; font-weight:700; }}
+  .digest-body {{ font-size:14px; line-height:1.8; }}
+  .digest-body a {{ color:#2563eb; word-break:break-all; }}
+  .empty {{ color:#6b7280; font-size:13px; }}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside class="side">{sidebar}</aside>
+<div class="content">
+<header><h1>朝の速報</h1></header>
+<main>
+  <div class="dates">{dates}</div>
+  <section class="card">{body}</section>
+</main>
+</div>
+</div>
+</body>
+</html>"""
+
+
+@router.get("/digest", response_class=HTMLResponse)
+def digest_page(date: str | None = None):
+    with _readonly():
+        digests = services.documents_list(
+            source="morning_digest", kind="digest", limit=100, order="desc",
+        )
+        selected = None
+        if digests:
+            chosen = next(
+                (d for d in digests if d.get("external_id") == date),
+                digests[0],
+            )
+            selected = services.documents_get(chosen["id"])
+    sidebar = _research_sidebar()
+    sidebar = sidebar.replace('<a href="/" class="active">', '<a href="/">', 1)
+    sidebar = sidebar.replace(
+        '<a href="/digest">', '<a class="active" href="/digest">', 1,
+    )
+    if not digests:
+        return _DIGEST_PAGE.format(
+            sidebar=sidebar, dates="",
+            body='<p class="empty">保存された速報がまだありません。</p>',
+        )
+    dates_html = "".join(
+        f'<a href="/digest?date={html.escape(d.get("external_id") or "", quote=True)}"'
+        f'{" class=\"active\"" if selected and d["id"] == selected["id"] else ""}>'
+        f'{html.escape(d.get("external_id") or "")}</a>'
+        for d in digests
+    )
+    body_html = (
+        f'<div class="digest-body">'
+        f'{_digest_body_html(selected.get("body") or "")}</div>'
+        if selected and selected.get("body")
+        else '<p class="empty">本文が保存されていません。</p>'
+    )
+    return _DIGEST_PAGE.format(
+        sidebar=sidebar, dates=dates_html, body=body_html,
     )
 
 
